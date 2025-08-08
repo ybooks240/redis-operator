@@ -1,0 +1,24 @@
+apiVersion: redis.github.com/v1
+kind: RedisInstance
+metadata:
+  name: redis-config-demo
+  namespace: default
+spec:
+  image: redis:7.0
+  replicas: 1
+  storage:
+    size: 1Gi
+    storageClassName: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  config:
+    maxmemory: 100mb
+    maxmemory-policy: allkeys-lru
+    appendonly: "yes"
+    appendfsync: everysec
+    save: "900 1 300 10 60 10000"

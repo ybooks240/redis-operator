@@ -1,0 +1,21 @@
+apiVersion: redis.github.com/v1
+kind: Config
+metadata:
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: config-sample
+spec:
+  # 需要达到的效果是，修改删除configmap，会根据config内容自动修复回来，需要修改configmap的内容，先修改到config
+  - name: redis
+    config: -|
+      maxmemory: 100mb
+      maxmemory-policy: allkeys-lru
+      appendonly: "yes"
+      appendfilename: "appendonly.aof"
+      aof-use-rdb-preamble: "yes"
+      aof-rewrite-incremental-fsync: "yes"
+      aof-rewrite-policy: "no"
+      aof-rewrite-min-size: 100mb
+      aof-rewrite-delay: "100"
+      aof-rewrite-cancel-delay: "100"

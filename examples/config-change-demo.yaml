@@ -1,0 +1,58 @@
+# 配置修改自动重启演示示例
+
+# 第一步：创建初始 RedisInstance
+apiVersion: redis.github.com/v1
+kind: RedisInstance
+metadata:
+  name: redis-config-demo
+  namespace: default
+spec:
+  image: redis:7.0
+  replicas: 1
+  storage:
+    size: 1Gi
+    storageClassName: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  config:
+    maxmemory: 100mb
+    maxmemory-policy: allkeys-lru
+    appendonly: "yes"
+    appendfsync: everysec
+    save: "900 1 300 10 60 10000"
+
+---
+# 第二步：修改配置（应用此配置将触发 StatefulSet 重启）
+# 取消注释下面的配置并应用，观察 StatefulSet 重启过程
+
+# apiVersion: redis.github.com/v1
+# kind: RedisInstance
+# metadata:
+#   name: redis-config-demo
+#   namespace: default
+# spec:
+#   image: redis:7.0
+#   replicas: 1
+#   storage:
+#     size: 1Gi
+#     storageClassName: standard
+#   resources:
+#     requests:
+#       cpu: 100m
+#       memory: 128Mi
+#     limits:
+#       cpu: 200m
+#       memory: 256Mi
+#   config:
+#     maxmemory: 200mb                    # 修改：从 100mb 改为 200mb
+#     maxmemory-policy: allkeys-lfu       # 修改：从 allkeys-lru 改为 allkeys-lfu
+#     appendonly: "yes"
+#     appendfsync: always                 # 修改：从 everysec 改为 always
+#     save: "300 10 60 10000"             # 修改：移除 900 1 保存点
+#     tcp-keepalive: "300"                # 新增：TCP keepalive 配置
+#     timeout: "0"                        # 新增：客户端超时配置

@@ -1,0 +1,61 @@
+apiVersion: redis.github.com/v1
+kind: RedisInstance
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"redis.github.com/v1","kind":"RedisInstance","metadata":{"annotations":{},"labels":{"app.kubernetes.io/managed-by":"kustomize","app.kubernetes.io/name":"redis-operator"},"name":"redisinstance-sample","namespace":"default"},"spec":{"config":{"aof-rewrite-cancel-delay":"100","aof-rewrite-delay":"100","aof-rewrite-incremental-fsync":"yes","aof-rewrite-min-size":"100mb","aof-rewrite-policy":"no","aof-use-rdb-preamble":"yes","appendfilename":"appendonly.aof","appendonly":"yes","maxmemory":"100mb","maxmemory-policy":"allkeys-lru"},"image":"redis:7.0","replicas":3,"resources":{"limits":{"cpu":"100m","memory":"1Gi"},"requests":{"cpu":"100m","memory":"1Gi"}},"storage":{"size":"100Mi","storageClassName":"standard"}}}
+  creationTimestamp: "2025-08-08T13:12:46Z"
+  finalizers:
+  - redis.github.com/finalizer
+  generation: 6
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: redis-operator
+  name: redisinstance-sample
+  namespace: default
+  resourceVersion: "549383"
+  uid: 363334b7-ddf3-4ae8-920e-f0b451c77621
+spec:
+  config:
+    aof-rewrite-incremental-fsync: "yes"
+    aof-use-rdb-preamble: "yes"
+    appendfilename: appendonly.aof
+    appendonly: "yes"
+    maxmemory: 100mb
+    maxmemory-policy: allkeys-lru
+  image: redis:7.0
+  replicas: 3
+  resources:
+    limits:
+      cpu: 100m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 1Gi
+  storage:
+    size: 100Mi
+    storageClassName: standard
+status:
+  conditions:
+  - lastTransitionTime: "2025-08-08T13:12:46Z"
+    message: 'One or more required resources are missing. ConfigMap: <nil>, Service:
+      <nil>, StatefulSet: StatefulSet.apps "redisinstance-sample" not found'
+    observedGeneration: 5
+    reason: ResourceMissing
+    status: "False"
+    type: Failed
+  - lastTransitionTime: "2025-08-08T13:12:52Z"
+    message: statefulSet for RedisInstance redisinstance-sample is pending.
+    observedGeneration: 6
+    reason: RedisInstancePending
+    status: "False"
+    type: Pending
+  - lastTransitionTime: "2025-08-08T13:51:31Z"
+    message: 'RedisInstance is running. StatefulSet: 3, Replicas: 3'
+    observedGeneration: 6
+    reason: RedisInstanceReady
+    status: "True"
+    type: Running
+  lastConditionMessage: 'RedisInstance is running. StatefulSet: 3, Replicas: 3'
+  ready: "True"
+  status: Running

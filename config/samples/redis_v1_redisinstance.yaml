@@ -1,0 +1,29 @@
+apiVersion: redis.github.com/v1
+kind: RedisInstance
+metadata:
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: redisinstance-sample
+spec:
+  image: redis:7.0
+  replicas: 3
+  storage:
+    size: 100Mi
+    storageClassName: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      cpu: 100m
+      memory: 1Gi
+  
+  config:
+    maxmemory: 100mb
+    maxmemory-policy: allkeys-lru
+    appendonly: "yes"
+    appendfilename: "appendonly.aof"
+    aof-use-rdb-preamble: "yes"
+    aof-rewrite-incremental-fsync: "yes"
+
