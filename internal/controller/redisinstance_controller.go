@@ -90,22 +90,8 @@ func (r *RedisInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		return ctrl.Result{}, err
 	}
-	// // DELETE
-	// if !redisInstance.DeletionTimestamp.IsZero() {
-	// 	logs.Info("删除中 Reconcile RedisInstance deleted", "redisInstance", redisInstance.Name)
-	// 	meta.SetStatusCondition(&redisInstance.Status.Conditions, metav1.Condition{
-	// 		Type:               string(redisv1.RedisPhaseTerminated),
-	// 		Status:             metav1.ConditionUnknown,
-	// 		Reason:             "Deleteing",
-	// 		Message:            "If you want to delete RedisInstance,you need remove finalizer",
-	// 		LastTransitionTime: redisInstance.CreationTimestamp,
-	// 		ObservedGeneration: redisInstance.Generation,
-	// 	})
-	// 	err = r.Status().Update(ctx, redisInstance)
-	// 	if err != nil {
-	// 		logs.Error(err, "Failed to update RedisInstance status")
-	// 	}
-	// }
+	// DELETE
+	// 更新redisinstance为terminated，等待手动移除finalizers
 	// CREATE
 	if redisInstance.Status.Conditions == nil {
 		logs.Info("创建 Reconcile RedisInstance will be create", "redisInstance", redisInstance)
@@ -118,7 +104,7 @@ func (r *RedisInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	// 检查并创建或更新所有资源,删除情况下不更新
+	// 检查并创建或更新所有资源
 	err = r.ensureResources(ctx, req, redisInstance, statefulSet, configMap, service, logs)
 	if err != nil {
 		logs.Error(err, "Failed to ensure resources")

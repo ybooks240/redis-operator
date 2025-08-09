@@ -22,6 +22,15 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the redis-operator itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- rediscluster_admin_role.yaml
+- rediscluster_editor_role.yaml
+- rediscluster_viewer_role.yaml
+- redissentinel_admin_role.yaml
+- redissentinel_editor_role.yaml
+- redissentinel_viewer_role.yaml
+- redismasterreplica_admin_role.yaml
+- redismasterreplica_editor_role.yaml
+- redismasterreplica_viewer_role.yaml
 - redis_admin_role.yaml
 - redis_editor_role.yaml
 - redis_viewer_role.yaml

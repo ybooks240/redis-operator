@@ -3,4 +3,7 @@ resources:
 - redis_v1_redisinstance.yaml
 - redis_v1_config.yaml
 - redis_v1_redis.yaml
+- redis_v1_redismasterreplica.yaml
+- redis_v1_redissentinel.yaml
+- redis_v1_rediscluster.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

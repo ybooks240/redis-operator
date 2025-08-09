@@ -5,6 +5,9 @@ resources:
 - bases/redis.github.com_redisinstances.yaml
 - bases/redis.github.com_configs.yaml
 - bases/redis.github.com_redis.yaml
+- bases/redis.github.com_redismasterreplicas.yaml
+- bases/redis.github.com_redissentinels.yaml
+- bases/redis.github.com_redisclusters.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
