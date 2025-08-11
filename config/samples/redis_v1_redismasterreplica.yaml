@@ -9,7 +9,7 @@ spec:
   # Redis image to use
   image: "redis:7.0"
   
-  # Master node configuration
+  # Master node configurationredis_v1_redismasterreplica.yaml 
   master:
     resources:
       requests:

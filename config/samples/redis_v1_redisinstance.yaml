@@ -5,13 +5,13 @@ metadata:
     app.kubernetes.io/name: redis-operator
     app.kubernetes.io/managed-by: kustomize
   name: redisinstance-sample
-  namespace: test
+  # namespace: test
 spec:
   image: redis:7.0
-  replicas: 1
+  replicas: 2
   storage:
-    size: 100Mi
-    storageClassName: standard
+    size: 150Mi
+    storageClassName: expandable-storage
   resources:
     requests:
       cpu: 100m
@@ -21,7 +21,7 @@ spec:
       memory: 1Gi
   
   config:
-    maxmemory: 100mb
+    maxmemory: 200mb
     maxmemory-policy: allkeys-lru
     appendonly: "yes"
     appendfilename: "appendonly.aof"

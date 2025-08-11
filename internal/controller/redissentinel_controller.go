@@ -40,6 +40,7 @@ import (
 
 	"github.com/go-logr/logr"
 	redisv1 "github.com/ybooks240/redis-operator/api/v1"
+	"github.com/ybooks240/redis-operator/internal/metrics"
 	"github.com/ybooks240/redis-operator/internal/utils"
 )
 
@@ -48,6 +49,7 @@ type RedisSentinelReconciler struct {
 	client.Client
 	Scheme         *runtime.Scheme
 	storageManager *utils.StorageManager
+	MetricsManager *metrics.MetricsCollectionManager
 }
 
 // +kubebuilder:rbac:groups=redis.github.com,resources=redissentinels,verbs=get;list;watch;create;update;patch;delete
@@ -127,6 +129,28 @@ func (r *RedisSentinelReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		logs.Error(err, "Failed to update RedisSentinel status")
 		return ctrl.Result{}, err
+	}
+
+	// 注册指标收集器
+	if r.MetricsManager != nil {
+		// 为 Sentinel 添加指标收集器
+		sentinelAddrs := []string{
+			fmt.Sprintf("%s-sentinel-service.%s.svc.cluster.local:26379", redisSentinel.Name, redisSentinel.Namespace),
+		}
+		sentinelCollector := metrics.NewSentinelCollector(sentinelAddrs, redisSentinel.Namespace, redisSentinel.Name)
+		r.MetricsManager.AddSentinelCollector(sentinelCollector)
+
+		// 记录协调操作指标
+		metrics.RecordReconcile("RedisSentinel", redisSentinel.Namespace, redisSentinel.Name, "success", 0.0)
+
+		// 更新 Sentinel 指标
+		if redisSentinel.Status.Status != "" {
+			var statusValue float64 = 0
+			if redisSentinel.Status.Status == string(redisv1.RedisPhaseRunning) {
+				statusValue = 1
+			}
+			metrics.SetRedisSentinelMasterStatus(redisSentinel.Namespace, redisSentinel.Name, "mymaster", statusValue)
+		}
 	}
 
 	return ctrl.Result{RequeueAfter: time.Second * 30}, nil
@@ -347,7 +371,7 @@ func (r *RedisSentinelReconciler) ensureSentinelConfigMap(ctx context.Context, r
 	if errors.IsNotFound(err) {
 		// 创建新的 ConfigMap
 		configMap = r.configMapForSentinel(redisSentinel, masterDNS)
-		if err := controllerutil.SetControllerReference(redisSentinel, configMap, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, configMap, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(configMap, redisv1.RedisSentinelFinalizer)
@@ -382,7 +406,7 @@ func (r *RedisSentinelReconciler) ensureSentinelStatefulSet(ctx context.Context,
 	if errors.IsNotFound(err) {
 		// 创建新的 StatefulSet
 		statefulSet = r.statefulSetForSentinelWithDynamicConfig(redisSentinel)
-		if err := controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisSentinelFinalizer)
@@ -463,7 +487,7 @@ func (r *RedisSentinelReconciler) ensureRedisHeadlessService(ctx context.Context
 				},
 			},
 		}
-		if err := controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisSentinelFinalizer)
@@ -638,7 +662,7 @@ func (r *RedisSentinelReconciler) ensureRedisStatefulSet(ctx context.Context, re
 			},
 		}
 
-		if err := controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisSentinelFinalizer)
@@ -780,7 +804,7 @@ func (r *RedisSentinelReconciler) ensureSentinelService(ctx context.Context, red
 	if errors.IsNotFound(err) {
 		// 创建新的 Service
 		service = r.serviceForSentinel(redisSentinel)
-		if err := controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisSentinelFinalizer)
@@ -1178,7 +1202,7 @@ func (r *RedisSentinelReconciler) ensureRedisMasterStatefulSet(ctx context.Conte
 	if errors.IsNotFound(err) {
 		// 创建新的 StatefulSet
 		statefulSet = r.statefulSetForRedisMaster(redisSentinel)
-		if err := controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisSentinelFinalizer)
@@ -1200,7 +1224,7 @@ func (r *RedisSentinelReconciler) ensureRedisMasterService(ctx context.Context, 
 	if errors.IsNotFound(err) {
 		// 创建新的 Service
 		service = r.serviceForRedisMaster(redisSentinel)
-		if err := controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisSentinelFinalizer)
@@ -1222,7 +1246,7 @@ func (r *RedisSentinelReconciler) ensureRedisReplicaStatefulSet(ctx context.Cont
 	if errors.IsNotFound(err) {
 		// 创建新的 StatefulSet
 		statefulSet = r.statefulSetForRedisReplica(redisSentinel)
-		if err := controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisSentinelFinalizer)
@@ -1244,7 +1268,7 @@ func (r *RedisSentinelReconciler) ensureRedisReplicaService(ctx context.Context,
 	if errors.IsNotFound(err) {
 		// 创建新的 Service
 		service = r.serviceForRedisReplica(redisSentinel)
-		if err := controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisSentinel, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisSentinelFinalizer)

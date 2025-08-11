@@ -1,0 +1,104 @@
+# ServiceMonitor for RedisInstance
+# 此文件展示如何为 RedisInstance 配置 Prometheus 监控
+# 使用方法: kubectl apply -f servicemonitor_redisinstance.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redisinstance-sample-monitor
+  namespace: default  # 与 RedisInstance 相同的命名空间
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: instance
+spec:
+  # 选择器匹配 RedisInstance 创建的 Service
+  selector:
+    matchLabels:
+      app: redis
+      instance: redisinstance-sample  # 匹配 RedisInstance 的名称
+  
+  # 监控端点配置
+  endpoints:
+  - port: redis  # Redis 服务端口名称
+    path: /metrics  # 指标路径（需要 Redis Exporter 或自定义指标端点）
+    interval: 30s   # 抓取间隔
+    scrapeTimeout: 10s  # 抓取超时
+    scheme: http    # 协议
+    
+    # 可选：添加额外的标签
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    
+    # 可选：指标重写规则
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'redisinstance_${1}'
+
+---
+# 可选：为 Redis Exporter 配置单独的 ServiceMonitor
+# 如果使用 Redis Exporter 作为 sidecar 容器
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redisinstance-sample-exporter-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: instance-exporter
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      component: exporter
+      instance: redisinstance-sample
+  
+  endpoints:
+  - port: exporter  # Redis Exporter 端口
+    path: /metrics
+    interval: 15s
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_label_role]
+      targetLabel: redis_role
+
+# ==========================================
+# 配置说明
+# ==========================================
+#
+# 1. 端口配置:
+#    - 'redis': Redis 主服务端口 (6379)
+#    - 'exporter': Redis Exporter 端口 (9121)
+#
+# 2. 标签选择器:
+#    - 必须匹配 RedisInstance 控制器创建的 Service 标签
+#    - 'instance' 标签应该匹配 RedisInstance 的名称
+#
+# 3. 指标路径:
+#    - Redis 原生指标: 需要配置 Redis Exporter
+#    - 自定义指标: 使用控制器暴露的指标端点
+#
+# 4. 重标签配置:
+#    - 添加 Kubernetes 元数据作为指标标签
+#    - 便于在 Grafana 中进行过滤和分组
+#
+# 5. 使用前提:
+#    - 确保 Prometheus Operator 已安装
+#    - 确保 ServiceMonitor CRD 存在
+#    - 确保 Prometheus 配置了正确的 serviceMonitorSelector

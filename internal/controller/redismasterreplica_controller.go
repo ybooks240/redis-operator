@@ -40,12 +40,14 @@ import (
 
 	"github.com/go-logr/logr"
 	redisv1 "github.com/ybooks240/redis-operator/api/v1"
+	"github.com/ybooks240/redis-operator/internal/metrics"
 )
 
 // RedisMasterReplicaReconciler reconciles a RedisMasterReplica object
 type RedisMasterReplicaReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme         *runtime.Scheme
+	MetricsManager *metrics.MetricsCollectionManager
 }
 
 // +kubebuilder:rbac:groups=redis.github.com,resources=redismasterreplicas,verbs=get;list;watch;create;update;patch;delete
@@ -84,7 +86,7 @@ func (r *RedisMasterReplicaReconciler) Reconcile(ctx context.Context, req ctrl.R
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			// 重新获取最新的资源版本
 			latestRedisMasterReplica := &redisv1.RedisMasterReplica{}
-			if err := r.Get(ctx, types.NamespacedName{Name: redisMasterReplica.Name, Namespace: redisMasterReplica.Namespace}, latestRedisMasterReplica); err != nil {
+			if err = r.Get(ctx, types.NamespacedName{Name: redisMasterReplica.Name, Namespace: redisMasterReplica.Namespace}, latestRedisMasterReplica); err != nil {
 				return err
 			}
 			controllerutil.RemoveFinalizer(latestRedisMasterReplica, redisv1.RedisMasterReplicaFinalizer)
@@ -120,6 +122,40 @@ func (r *RedisMasterReplicaReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err != nil {
 		logs.Error(err, "Failed to update RedisMasterReplica status")
 		return ctrl.Result{}, err
+	}
+
+	// 添加指标收集器
+	if r.MetricsManager != nil {
+		// 为主节点添加指标收集器
+		masterAddr := fmt.Sprintf("%s-master-service.%s.svc.cluster.local:6379", redisMasterReplica.Name, redisMasterReplica.Namespace)
+		masterCollector := metrics.NewRedisCollector(
+			masterAddr,
+			"", // password
+			redisMasterReplica.Namespace,
+			redisMasterReplica.Name+"-master",
+			"master",
+		)
+		r.MetricsManager.AddRedisCollector(masterCollector)
+
+		// 为从节点添加指标收集器
+		replicaAddr := fmt.Sprintf("%s-replica-service.%s.svc.cluster.local:6379", redisMasterReplica.Name, redisMasterReplica.Namespace)
+		replicaCollector := metrics.NewRedisCollector(
+			replicaAddr,
+			"", // password
+			redisMasterReplica.Namespace,
+			redisMasterReplica.Name+"-replica",
+			"replica",
+		)
+		r.MetricsManager.AddRedisCollector(replicaCollector)
+
+		// 记录协调操作指标
+		start := time.Now()
+		statusValue := 1.0
+		if redisMasterReplica.Status.Status != "Ready" {
+			statusValue = 0.0
+		}
+		metrics.RecordReconcile(redisMasterReplica.Namespace, redisMasterReplica.Name, "success", "master-replica", float64(time.Since(start).Milliseconds()))
+		metrics.SetRedisInstanceStatus(redisMasterReplica.Namespace, redisMasterReplica.Name, "master-replica", statusValue)
 	}
 
 	return ctrl.Result{RequeueAfter: time.Second * 30}, nil
@@ -234,7 +270,7 @@ func (r *RedisMasterReplicaReconciler) ensureMasterConfigMap(ctx context.Context
 	if errors.IsNotFound(err) {
 		// 创建新的 ConfigMap
 		configMap = r.configMapForMaster(redisMasterReplica)
-		if err := controllerutil.SetControllerReference(redisMasterReplica, configMap, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisMasterReplica, configMap, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(configMap, redisv1.RedisMasterReplicaFinalizer)
@@ -269,7 +305,7 @@ func (r *RedisMasterReplicaReconciler) ensureReplicaConfigMap(ctx context.Contex
 	if errors.IsNotFound(err) {
 		// 创建新的 ConfigMap
 		configMap = r.configMapForReplica(redisMasterReplica)
-		if err := controllerutil.SetControllerReference(redisMasterReplica, configMap, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisMasterReplica, configMap, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(configMap, redisv1.RedisMasterReplicaFinalizer)
@@ -304,7 +340,7 @@ func (r *RedisMasterReplicaReconciler) ensureMasterStatefulSet(ctx context.Conte
 	if errors.IsNotFound(err) {
 		// 创建新的 StatefulSet
 		statefulSet = r.statefulSetForMaster(redisMasterReplica)
-		if err := controllerutil.SetControllerReference(redisMasterReplica, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisMasterReplica, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisMasterReplicaFinalizer)
@@ -361,7 +397,7 @@ func (r *RedisMasterReplicaReconciler) ensureReplicaStatefulSet(ctx context.Cont
 	if errors.IsNotFound(err) {
 		// 创建新的 StatefulSet
 		statefulSet = r.statefulSetForReplica(redisMasterReplica)
-		if err := controllerutil.SetControllerReference(redisMasterReplica, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisMasterReplica, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisMasterReplicaFinalizer)
@@ -418,7 +454,7 @@ func (r *RedisMasterReplicaReconciler) ensureMasterService(ctx context.Context, 
 	if errors.IsNotFound(err) {
 		// 创建新的 Service
 		service = r.serviceForMaster(redisMasterReplica)
-		if err := controllerutil.SetControllerReference(redisMasterReplica, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisMasterReplica, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisMasterReplicaFinalizer)
@@ -440,7 +476,7 @@ func (r *RedisMasterReplicaReconciler) ensureReplicaService(ctx context.Context,
 	if errors.IsNotFound(err) {
 		// 创建新的 Service
 		service = r.serviceForReplica(redisMasterReplica)
-		if err := controllerutil.SetControllerReference(redisMasterReplica, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisMasterReplica, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisMasterReplicaFinalizer)

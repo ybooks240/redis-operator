@@ -282,7 +282,7 @@ func (r *RedisReconciler) mapToRedisRequests(ctx context.Context, obj client.Obj
 			},
 		}
 
-		if err := r.Create(ctx, newRedisView); err != nil {
+		if err = r.Create(ctx, newRedisView); err != nil {
 			logs.Error(err, "Failed to create auto Redis aggregated view", "name", aggregatedViewName, "namespace", obj.GetNamespace())
 		} else {
 			logs.Info("Auto-created Redis aggregated view", "name", aggregatedViewName, "namespace", obj.GetNamespace(), "type", resourceType)

@@ -1,0 +1,263 @@
+# Comprehensive ServiceMonitor Configuration
+# 此文件展示如何为所有类型的 Redis CR 配置统一的 Prometheus 监控
+# 使用方法: kubectl apply -f servicemonitor_comprehensive.yaml
+
+# ==========================================
+# 通用 Redis 监控 ServiceMonitor
+# 监控所有类型的 Redis 实例
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-operator-comprehensive-monitor
+  namespace: default  # 可以根据需要修改命名空间
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: comprehensive
+spec:
+  # 通用选择器 - 匹配所有 Redis 相关服务
+  selector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values: ["redis", "redis-cluster", "redis-sentinel"]
+  
+  # 命名空间选择器 - 可以监控多个命名空间
+  namespaceSelector:
+    matchNames:
+    - default
+    - redis-system
+    - production
+    # 添加更多需要监控的命名空间
+  
+  # 监控端点配置
+  endpoints:
+  # Redis 主要端口监控
+  - port: redis  # Redis 端口 (6379)
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    scheme: http
+    
+    # 通用重标签配置
+    relabelings:
+    # 基础 Kubernetes 元数据
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_ip]
+      targetLabel: pod_ip
+    
+    # Redis 类型识别
+    - sourceLabels: [__meta_kubernetes_service_label_app]
+      regex: 'redis-cluster'
+      replacement: 'cluster'
+      targetLabel: redis_type
+    - sourceLabels: [__meta_kubernetes_service_label_app]
+      regex: 'redis-sentinel'
+      replacement: 'sentinel'
+      targetLabel: redis_type
+    - sourceLabels: [__meta_kubernetes_service_label_app]
+      regex: 'redis'
+      replacement: 'instance'
+      targetLabel: redis_type
+    
+    # 角色识别
+    - sourceLabels: [__meta_kubernetes_service_label_component]
+      targetLabel: redis_role
+    - sourceLabels: [__meta_kubernetes_pod_label_role]
+      targetLabel: redis_role
+    
+    # 实例识别
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: redis_instance
+    
+    # 集群分片信息（仅适用于 RedisCluster）
+    - sourceLabels: [__meta_kubernetes_pod_label_shard]
+      targetLabel: cluster_shard
+    
+    # 通用指标重写
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_${1}'
+  
+  # Sentinel 端口监控
+  - port: sentinel  # Sentinel 端口 (26379)
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'sentinel'
+      targetLabel: redis_type
+    - replacement: 'sentinel'
+      targetLabel: redis_role
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: redis_instance
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_sentinel_(.*)'
+      targetLabel: __name__
+      replacement: 'sentinel_${1}'
+
+---
+# ==========================================
+# Redis Exporter 监控 ServiceMonitor
+# 如果使用 Redis Exporter 作为 sidecar
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-exporter-comprehensive-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: redis-exporter
+  
+  namespaceSelector:
+    matchNames:
+    - default
+    - redis-system
+    - production
+  
+  endpoints:
+  - port: exporter  # Redis Exporter 端口 (9121)
+    path: /metrics
+    interval: 15s  # Exporter 可以更频繁地抓取
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_service_label_redis_instance]
+      targetLabel: redis_instance
+    - sourceLabels: [__meta_kubernetes_service_label_redis_type]
+      targetLabel: redis_type
+    - sourceLabels: [__meta_kubernetes_service_label_redis_role]
+      targetLabel: redis_role
+    - replacement: 'exporter'
+      targetLabel: metrics_source
+
+---
+# ==========================================
+# 高频监控 ServiceMonitor
+# 用于关键实例的高频监控
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-critical-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: critical
+spec:
+  selector:
+    matchLabels:
+      monitoring.redis.io/critical: "true"  # 需要在关键服务上添加此标签
+  
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 10s  # 更高频率的监控
+    scrapeTimeout: 5s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'critical'
+      targetLabel: monitoring_tier
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: redis_instance
+    - sourceLabels: [__meta_kubernetes_service_label_component]
+      targetLabel: redis_role
+
+# ==========================================
+# 配置说明和使用指南
+# ==========================================
+#
+# 1. 综合监控策略:
+#    - 通用监控: 覆盖所有类型的 Redis 实例
+#    - Exporter 监控: 专门监控 Redis Exporter 指标
+#    - 关键监控: 高频监控关键实例
+#
+# 2. 服务发现策略:
+#    - 使用 matchExpressions 匹配多种服务类型
+#    - 支持多命名空间监控
+#    - 通过标签区分不同的 Redis 类型和角色
+#
+# 3. 标签策略:
+#    - redis_type: instance/cluster/sentinel
+#    - redis_role: master/replica/sentinel
+#    - redis_instance: 实例名称
+#    - cluster_shard: 集群分片（仅 RedisCluster）
+#    - monitoring_tier: 监控级别（critical/standard）
+#    - metrics_source: 指标来源（native/exporter）
+#
+# 4. 端口配置:
+#    - redis (6379): Redis 主要端口
+#    - sentinel (26379): Sentinel 端口
+#    - exporter (9121): Redis Exporter 端口
+#
+# 5. 监控频率:
+#    - 标准监控: 30s 间隔
+#    - Exporter 监控: 15s 间隔
+#    - 关键监控: 10s 间隔
+#
+# 6. 使用方法:
+#    a) 基础使用:
+#       kubectl apply -f servicemonitor_comprehensive.yaml
+#    
+#    b) 标记关键服务:
+#       kubectl label service my-redis-service monitoring.redis.io/critical=true
+#    
+#    c) 多命名空间部署:
+#       修改 namespaceSelector.matchNames 添加目标命名空间
+#
+# 7. 自定义配置:
+#    - 修改 interval 调整监控频率
+#    - 添加更多 relabelings 规则
+#    - 调整 namespaceSelector 控制监控范围
+#    - 修改 selector 匹配特定的服务
+#
+# 8. 最佳实践:
+#    - 生产环境建议使用命名空间隔离
+#    - 为关键服务添加 critical 标签
+#    - 根据集群规模调整监控频率
+#    - 定期检查和清理无用的指标标签
+#
+# 9. 故障排除:
+#    - 检查服务标签是否正确
+#    - 验证端口名称是否匹配
+#    - 确认 Prometheus 有权限访问目标命名空间
+#    - 查看 Prometheus targets 页面确认发现状态

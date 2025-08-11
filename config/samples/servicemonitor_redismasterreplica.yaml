@@ -1,0 +1,163 @@
+# ServiceMonitor for RedisMasterReplica
+# 此文件展示如何为 RedisMasterReplica 配置 Prometheus 监控
+# 使用方法: kubectl apply -f servicemonitor_redismasterreplica.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redismasterreplica-sample-monitor
+  namespace: default  # 与 RedisMasterReplica 相同的命名空间
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: masterreplica
+spec:
+  # 选择器匹配 RedisMasterReplica 创建的所有 Service
+  selector:
+    matchLabels:
+      app: redis
+      instance: redismasterreplica-sample  # 匹配 RedisMasterReplica 的名称
+  
+  # 监控端点配置
+  endpoints:
+  - port: redis  # Redis 服务端口名称
+    path: /metrics  # 指标路径
+    interval: 30s   # 抓取间隔
+    scrapeTimeout: 10s  # 抓取超时
+    scheme: http    # 协议
+    
+    # 重标签配置 - 添加角色信息
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_service_label_component]
+      targetLabel: redis_role  # master 或 replica
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: redis_instance
+    
+    # 指标重写规则
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'redismasterreplica_${1}'
+
+---
+# Master 节点专用 ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redismasterreplica-sample-master-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: masterreplica-master
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      component: master
+      instance: redismasterreplica-sample
+  
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 15s  # Master 节点更频繁的监控
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'master'
+      targetLabel: redis_role
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_master_${1}'
+
+---
+# Replica 节点专用 ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redismasterreplica-sample-replica-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: masterreplica-replica
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      component: replica
+      instance: redismasterreplica-sample
+  
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 30s  # Replica 节点标准监控间隔
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'replica'
+      targetLabel: redis_role
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_replica_${1}'
+
+# ==========================================
+# 配置说明
+# ==========================================
+#
+# 1. 多 ServiceMonitor 策略:
+#    - 通用监控: 监控所有 Master 和 Replica 节点
+#    - 专用监控: 分别监控 Master 和 Replica 节点
+#    - 可根据需要选择使用一种或多种策略
+#
+# 2. 服务发现:
+#    - RedisMasterReplica 控制器会创建多个 Service:
+#      * {name}-master-service: Master 节点服务
+#      * {name}-replica-service: Replica 节点服务
+#
+# 3. 标签匹配:
+#    - 'app: redis': 所有 Redis 相关服务
+#    - 'component: master/replica': 区分节点角色
+#    - 'instance: {name}': 匹配特定的 RedisMasterReplica 实例
+#
+# 4. 监控频率:
+#    - Master 节点: 15s 间隔（更频繁，因为是主要节点）
+#    - Replica 节点: 30s 间隔（标准间隔）
+#    - 可根据实际需求调整
+#
+# 5. 指标标签:
+#    - 'redis_role': master/replica，便于区分节点角色
+#    - 'redis_instance': 实例名称，便于多实例管理
+#    - 'service_name', 'namespace', 'pod': Kubernetes 元数据
+#
+# 6. 使用建议:
+#    - 生产环境建议使用专用 ServiceMonitor
+#    - 开发环境可以使用通用 ServiceMonitor
+#    - 根据监控需求选择合适的抓取间隔

@@ -1,0 +1,40 @@
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: redissentinel-sample-view
+  namespace: default
+spec:
+  type: sentinel
+  resourceName: redissentinel-sample
+  resourceNamespace: default
+---
+# 示例：如果有其他类型的 Redis 资源，可以添加更多聚合视图
+# apiVersion: redis.github.com/v1
+# kind: Redis
+# metadata:
+#   name: rediscluster-sample-view
+#   namespace: default
+# spec:
+#   type: cluster
+#   resourceName: rediscluster-sample
+#   resourceNamespace: default
+# ---
+# apiVersion: redis.github.com/v1
+# kind: Redis
+# metadata:
+#   name: redisinstance-sample-view
+#   namespace: default
+# spec:
+#   type: instance
+#   resourceName: redisinstance-sample
+#   resourceNamespace: default
+# ---
+# apiVersion: redis.github.com/v1
+# kind: Redis
+# metadata:
+#   name: redismasterreplica-sample-view
+#   namespace: default
+# spec:
+#   type: masterreplica
+#   resourceName: redismasterreplica-sample
+#   resourceNamespace: default

@@ -42,13 +42,15 @@ import (
 
 	"github.com/go-logr/logr"
 	redisv1 "github.com/ybooks240/redis-operator/api/v1"
+	"github.com/ybooks240/redis-operator/internal/metrics"
 	"github.com/ybooks240/redis-operator/internal/utils"
 )
 
 // RedisInstanceReconciler reconciles a RedisInstance object
 type RedisInstanceReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme         *runtime.Scheme
+	MetricsManager *metrics.MetricsCollectionManager
 }
 
 // +kubebuilder:rbac:groups=redis.github.com,resources=redisinstances,verbs=get;list;watch;create;update;patch;delete
@@ -100,7 +102,7 @@ func (r *RedisInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			// 重新获取最新的资源版本
 			latestRedisInstance := &redisv1.RedisInstance{}
-			if err := r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, latestRedisInstance); err != nil {
+			if err = r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, latestRedisInstance); err != nil {
 				return err
 			}
 			controllerutil.RemoveFinalizer(latestRedisInstance, redisv1.RedisInstanceFinalizer)
@@ -140,6 +142,31 @@ func (r *RedisInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err != nil {
 		logs.Error(err, "Failed to update RedisInstance status")
 		return ctrl.Result{}, err
+	}
+
+	// 注册指标收集器
+	if r.MetricsManager != nil {
+		// 为 Redis 实例添加指标收集器
+		redisCollector := metrics.NewRedisCollector(
+			fmt.Sprintf("%s.%s.svc.cluster.local:6379", redisInstance.Name, redisInstance.Namespace),
+			"", // 无密码
+			redisInstance.Namespace,
+			redisInstance.Name,
+			"master", // Redis 角色
+		)
+		r.MetricsManager.AddRedisCollector(redisCollector)
+
+		// 记录协调操作指标
+		metrics.RecordReconcile("RedisInstance", redisInstance.Namespace, redisInstance.Name, "success", 0.0)
+
+		// 更新实例状态指标
+		if redisInstance.Status.Status != "" {
+			var statusValue float64 = 0
+			if redisInstance.Status.Status == string(redisv1.RedisPhaseRunning) {
+				statusValue = 1
+			}
+			metrics.SetRedisInstanceStatus(redisInstance.Namespace, redisInstance.Name, "master", statusValue)
+		}
 	}
 
 	// 返回结果，并设置重新队列的时间，以便定期检查状态

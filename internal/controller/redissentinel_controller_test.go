@@ -29,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -41,7 +40,7 @@ var _ = Describe("RedisSentinel Controller", func() {
 		ctx        context.Context
 		reconciler *RedisSentinelReconciler
 		scheme     *runtime.Scheme
-		k8sClient  client.Client
+		// k8sClient  client.Client
 	)
 
 	BeforeEach(func() {

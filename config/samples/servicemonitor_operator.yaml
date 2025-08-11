@@ -1,0 +1,94 @@
+# ServiceMonitor for Redis Operator Controller Manager
+# 此文件展示如何为 Redis Operator 控制器配置 Prometheus 监控
+# 使用方法: kubectl apply -f servicemonitor_operator.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redis-operator-controller-manager-monitor
+  namespace: redis-operator-system  # 与 Redis Operator 相同的命名空间
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    control-plane: controller-manager
+spec:
+  # 选择器匹配 Redis Operator Controller Manager 的 metrics service
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis-operator
+      control-plane: controller-manager
+  
+  # 监控端点配置
+  endpoints:
+  - port: http  # metrics 服务端口名称 (8080)
+    path: /metrics  # 指标路径
+    interval: 30s   # 抓取间隔
+    scrapeTimeout: 10s  # 抓取超时
+    scheme: http    # 协议 (已改为 HTTP)
+    
+    # 重标签配置 - 添加控制器信息
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'redis-operator-controller'
+      targetLabel: component
+    - replacement: 'controller-manager'
+      targetLabel: role
+    
+    # 指标重写规则 - 为 operator 指标添加前缀
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'controller_runtime_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_operator_controller_${1}'
+    - sourceLabels: [__name__]
+      regex: 'workqueue_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_operator_workqueue_${1}'
+    - sourceLabels: [__name__]
+      regex: 'process_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_operator_process_${1}'
+    - sourceLabels: [__name__]
+      regex: 'go_(.*)'
+      targetLabel: __name__
+      replacement: 'redis_operator_go_${1}'
+
+# ==========================================
+# 配置说明
+# ==========================================
+#
+# 1. 监控目标:
+#    - Redis Operator Controller Manager 的 metrics 端点
+#    - 包含控制器运行时指标、工作队列指标、进程指标等
+#
+# 2. 服务发现:
+#    - 通过标签选择器匹配 redis-operator-controller-manager-metrics-service
+#    - 标签: app.kubernetes.io/name=redis-operator, control-plane=controller-manager
+#
+# 3. 端点配置:
+#    - 端口: http (8080) - 已从 HTTPS 改为 HTTP
+#    - 路径: /metrics
+#    - 协议: http
+#    - 抓取间隔: 30s
+#
+# 4. 指标分类:
+#    - controller_runtime_*: 控制器运行时指标
+#    - workqueue_*: 工作队列指标
+#    - process_*: 进程相关指标
+#    - go_*: Go 运行时指标
+#
+# 5. 重标签:
+#    - 添加 redis_operator_ 前缀以区分不同组件的指标
+#    - 保留原始指标名称的核心部分
+#    - 添加组件和角色标签便于查询
+#
+# 6. 使用建议:
+#    - 确保 Prometheus Operator 已安装
+#    - 确保 ServiceMonitor CRD 可用
+#    - 根据监控需求调整抓取间隔
+#    - 可以根据需要添加更多的指标重写规则

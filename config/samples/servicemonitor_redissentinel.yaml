@@ -1,0 +1,223 @@
+# ServiceMonitor for RedisSentinel
+# 此文件展示如何为 RedisSentinel 配置 Prometheus 监控
+# 使用方法: kubectl apply -f servicemonitor_redissentinel.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redissentinel-sample-monitor
+  namespace: default  # 与 RedisSentinel 相同的命名空间
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: sentinel
+spec:
+  # 选择器匹配 RedisSentinel 创建的所有 Service
+  selector:
+    matchLabels:
+      app: redis-sentinel
+      instance: redissentinel-sample  # 匹配 RedisSentinel 的名称
+  
+  # 监控端点配置
+  endpoints:
+  - port: sentinel  # Sentinel 服务端口名称 (26379)
+    path: /metrics  # 指标路径
+    interval: 30s   # 抓取间隔
+    scrapeTimeout: 10s  # 抓取超时
+    scheme: http    # 协议
+    
+    # 重标签配置
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_service_label_component]
+      targetLabel: redis_component  # sentinel
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: redis_instance
+    
+    # 指标重写规则
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'redissentinel_${1}'
+
+---
+# Sentinel 节点专用 ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redissentinel-sample-sentinel-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: sentinel-nodes
+spec:
+  selector:
+    matchLabels:
+      app: redis-sentinel
+      component: sentinel
+      instance: redissentinel-sample
+  
+  endpoints:
+  - port: sentinel
+    path: /metrics
+    interval: 15s  # Sentinel 节点更频繁的监控
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'sentinel'
+      targetLabel: redis_role
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_sentinel_(.*)'
+      targetLabel: __name__
+      replacement: 'sentinel_${1}'
+
+---
+# Redis Master 节点监控（由 Sentinel 管理）
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redissentinel-sample-redis-master-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: sentinel-redis-master
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      component: master
+      instance: redissentinel-sample
+  
+  endpoints:
+  - port: redis  # Redis 端口 (6379)
+    path: /metrics
+    interval: 15s
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'redis-master'
+      targetLabel: redis_role
+    - replacement: 'sentinel-managed'
+      targetLabel: management_type
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'sentinel_redis_master_${1}'
+
+---
+# Redis Replica 节点监控（由 Sentinel 管理）
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: redissentinel-sample-redis-replica-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: sentinel-redis-replica
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      component: replica
+      instance: redissentinel-sample
+  
+  endpoints:
+  - port: redis  # Redis 端口 (6379)
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'redis-replica'
+      targetLabel: redis_role
+    - replacement: 'sentinel-managed'
+      targetLabel: management_type
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'sentinel_redis_replica_${1}'
+
+# ==========================================
+# 配置说明
+# ==========================================
+#
+# 1. RedisSentinel 架构监控:
+#    - Sentinel 节点监控: 监控 Sentinel 进程本身
+#    - Redis Master 监控: 监控被 Sentinel 管理的 Master 节点
+#    - Redis Replica 监控: 监控被 Sentinel 管理的 Replica 节点
+#
+# 2. 服务发现:
+#    - RedisSentinel 控制器创建的 Service:
+#      * {name}-sentinel-service: Sentinel 节点服务 (端口 26379)
+#      * {name}-redis-master-service: Redis Master 服务 (端口 6379)
+#      * {name}-redis-replica-service: Redis Replica 服务 (端口 6379)
+#      * {name}-redis-headless: Headless 服务用于 StatefulSet
+#
+# 3. 端口配置:
+#    - 'sentinel': Sentinel 端口 (26379)
+#    - 'redis': Redis 端口 (6379)
+#
+# 4. 监控重点:
+#    - Sentinel 指标: 仲裁状态、故障转移、主节点发现
+#    - Redis Master 指标: 性能、连接数、内存使用
+#    - Redis Replica 指标: 同步状态、延迟
+#
+# 5. 标签策略:
+#    - 'redis_role': sentinel/redis-master/redis-replica
+#    - 'management_type': sentinel-managed（区分独立 Redis 和 Sentinel 管理的 Redis）
+#    - 'redis_component': 组件类型
+#    - 'redis_instance': 实例名称
+#
+# 6. 监控频率:
+#    - Sentinel 节点: 15s（需要及时发现故障转移）
+#    - Redis Master: 15s（主节点性能关键）
+#    - Redis Replica: 30s（从节点标准监控）
+#
+# 7. 关键指标:
+#    - sentinel_masters: 监控的主节点数量
+#    - sentinel_sentinels: 每个主节点的 Sentinel 数量
+#    - sentinel_master_status: 主节点状态
+#    - sentinel_failovers_total: 故障转移次数
+#    - redis_connected_clients: 连接的客户端数
+#    - redis_memory_usage_bytes: 内存使用量
+#
+# 8. 使用建议:
+#    - 生产环境建议使用所有 ServiceMonitor
+#    - 重点关注 Sentinel 的仲裁状态和故障转移指标
+#    - 设置适当的告警规则监控高可用性状态

@@ -17,10 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
 	"path/filepath"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -39,6 +41,7 @@ import (
 
 	redisv1 "github.com/ybooks240/redis-operator/api/v1"
 	"github.com/ybooks240/redis-operator/internal/controller"
+	"github.com/ybooks240/redis-operator/internal/metrics"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -63,6 +66,7 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var enableMetricsCollection bool
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -81,6 +85,8 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.BoolVar(&enableMetricsCollection, "enable-metrics-collection", false,
+		"If set, Redis metrics collection will be enabled. Disable for local development to avoid connection errors.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -202,53 +208,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.RedisInstanceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RedisInstance")
-		os.Exit(1)
-	}
-	if err := (&controller.ConfigReconciler{
+	if err = (&controller.ConfigReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Config")
 		os.Exit(1)
 	}
-	if err := (&controller.RedisReconciler{
+	if err = (&controller.RedisReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Redis")
 		os.Exit(1)
 	}
-	if err := (&controller.RedisMasterReplicaReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RedisMasterReplica")
-		os.Exit(1)
-	}
-	if err := (&controller.RedisSentinelReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RedisSentinel")
-		os.Exit(1)
-	}
-	if err := (&controller.RedisClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "RedisCluster")
-		os.Exit(1)
-	}
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {
 		setupLog.Info("Adding metrics certificate watcher to manager")
-		if err := mgr.Add(metricsCertWatcher); err != nil {
+		if err = mgr.Add(metricsCertWatcher); err != nil {
 			setupLog.Error(err, "unable to add metrics certificate watcher to manager")
 			os.Exit(1)
 		}
@@ -256,24 +234,75 @@ func main() {
 
 	if webhookCertWatcher != nil {
 		setupLog.Info("Adding webhook certificate watcher to manager")
-		if err := mgr.Add(webhookCertWatcher); err != nil {
+		if err = mgr.Add(webhookCertWatcher); err != nil {
 			setupLog.Error(err, "unable to add webhook certificate watcher to manager")
 			os.Exit(1)
 		}
 	}
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+	if err = mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+	if err = mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	// 启动指标收集管理器（仅在启用时）
+	var metricsManager *metrics.MetricsCollectionManager
+	if enableMetricsCollection {
+		metricsManager = metrics.NewMetricsCollectionManager(30 * time.Second)
+		ctx := context.Background()
+		go func() {
+			setupLog.Info("Starting metrics collection manager")
+			metricsManager.Start(ctx)
+		}()
+	} else {
+		setupLog.Info("Metrics collection disabled for local development")
+	}
+
+	// 为控制器设置指标管理器
+	if err = (&controller.RedisInstanceReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		MetricsManager: metricsManager,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "RedisInstance")
+		os.Exit(1)
+	}
+
+	if err = (&controller.RedisSentinelReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		MetricsManager: metricsManager,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "RedisSentinel")
+		os.Exit(1)
+	}
+
+	if err = (&controller.RedisClusterReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		MetricsManager: metricsManager,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "RedisCluster")
+		os.Exit(1)
+	}
+
+	if err = (&controller.RedisMasterReplicaReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		MetricsManager: metricsManager,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "RedisMasterReplica")
 		os.Exit(1)
 	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
+		metricsManager.Stop()
 		os.Exit(1)
 	}
 }

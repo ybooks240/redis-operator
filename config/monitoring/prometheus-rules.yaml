@@ -57,7 +57,7 @@ spec:
         severity: warning
       annotations:
         summary: "Redis instance high memory usage"
-        description: "Redis instance {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.role }}) is using {{ $value | humanizeBytes }} of memory."
+        description: "Redis instance {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.role }}) is using {{ $value }} bytes of memory."
 
     - alert: RedisInstanceHighConnectedClients
       expr: redis_instance_connected_clients > 1000
@@ -154,7 +154,7 @@ spec:
         severity: warning
       annotations:
         summary: "Redis high memory usage"
-        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} container {{ $labels.container }} is using {{ $value | humanizeBytes }} of memory."
+        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} container {{ $labels.container }} is using {{ $value }} bytes of memory."
 
     - alert: RedisPersistenceFailure
       expr: increase(redis_persistence_operations_total{result="failure"}[5m]) > 0
@@ -173,7 +173,7 @@ spec:
         severity: warning
       annotations:
         summary: "Redis high network I/O"
-        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} has high {{ $labels.direction }} network I/O: {{ $value | humanizeBytes }}/s."
+        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} has high {{ $labels.direction }} network I/O: {{ $value }} bytes/s."
 
   - name: redis-operator.recording
     interval: 30s

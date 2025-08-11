@@ -39,12 +39,14 @@ import (
 
 	"github.com/go-logr/logr"
 	redisv1 "github.com/ybooks240/redis-operator/api/v1"
+	"github.com/ybooks240/redis-operator/internal/metrics"
 )
 
 // RedisClusterReconciler reconciles a RedisCluster object
 type RedisClusterReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme         *runtime.Scheme
+	MetricsManager *metrics.MetricsCollectionManager
 }
 
 // +kubebuilder:rbac:groups=redis.github.com,resources=redisclusters,verbs=get;list;watch;create;update;patch;delete
@@ -83,7 +85,7 @@ func (r *RedisClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			// 重新获取最新的资源版本
 			latestRedisCluster := &redisv1.RedisCluster{}
-			if err := r.Get(ctx, types.NamespacedName{Name: redisCluster.Name, Namespace: redisCluster.Namespace}, latestRedisCluster); err != nil {
+			if err = r.Get(ctx, types.NamespacedName{Name: redisCluster.Name, Namespace: redisCluster.Namespace}, latestRedisCluster); err != nil {
 				return err
 			}
 			controllerutil.RemoveFinalizer(latestRedisCluster, redisv1.RedisClusterFinalizer)
@@ -119,6 +121,31 @@ func (r *RedisClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		logs.Error(err, "Failed to update RedisCluster status")
 		return ctrl.Result{}, err
+	}
+
+	// 注册指标收集器
+	if r.MetricsManager != nil {
+		// 为 Redis Cluster 添加指标收集器
+		clusterAddrs := []string{fmt.Sprintf("%s-service.%s.svc.cluster.local:6379", redisCluster.Name, redisCluster.Namespace)}
+		clusterCollector := metrics.NewClusterCollector(
+			clusterAddrs,
+			"", // 无密码
+			redisCluster.Namespace,
+			redisCluster.Name,
+		)
+		r.MetricsManager.AddClusterCollector(clusterCollector)
+
+		// 记录协调操作指标
+		metrics.RecordReconcile("RedisCluster", redisCluster.Namespace, redisCluster.Name, "success", 0.0)
+
+		// 更新集群状态指标
+		if redisCluster.Status.Status != "" {
+			var statusValue float64 = 0
+			if redisCluster.Status.Status == string(redisv1.RedisPhaseRunning) {
+				statusValue = 1
+			}
+			metrics.SetRedisClusterState(redisCluster.Namespace, redisCluster.Name, statusValue)
+		}
 	}
 
 	return ctrl.Result{RequeueAfter: time.Second * 30}, nil
@@ -197,7 +224,7 @@ func (r *RedisClusterReconciler) ensureConfigMap(ctx context.Context, redisClust
 	if errors.IsNotFound(err) {
 		// 创建新的 ConfigMap
 		configMap = r.configMapForCluster(redisCluster)
-		if err := controllerutil.SetControllerReference(redisCluster, configMap, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisCluster, configMap, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(configMap, redisv1.RedisClusterFinalizer)
@@ -287,7 +314,7 @@ func (r *RedisClusterReconciler) ensureStatefulSet(ctx context.Context, redisClu
 	if errors.IsNotFound(err) {
 		// 创建新的 StatefulSet
 		statefulSet = r.statefulSetForCluster(redisCluster)
-		if err := controllerutil.SetControllerReference(redisCluster, statefulSet, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisCluster, statefulSet, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(statefulSet, redisv1.RedisClusterFinalizer)
@@ -357,7 +384,7 @@ func (r *RedisClusterReconciler) ensureService(ctx context.Context, redisCluster
 	if errors.IsNotFound(err) {
 		// 创建新的 Service
 		service = r.serviceForCluster(redisCluster)
-		if err := controllerutil.SetControllerReference(redisCluster, service, r.Scheme); err != nil {
+		if err = controllerutil.SetControllerReference(redisCluster, service, r.Scheme); err != nil {
 			return err
 		}
 		controllerutil.AddFinalizer(service, redisv1.RedisClusterFinalizer)

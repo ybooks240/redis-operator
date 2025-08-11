@@ -1,0 +1,283 @@
+# ServiceMonitor for RedisCluster
+# 此文件展示如何为 RedisCluster 配置 Prometheus 监控
+# 使用方法: kubectl apply -f servicemonitor_rediscluster.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rediscluster-sample-monitor
+  namespace: default  # 与 RedisCluster 相同的命名空间
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: cluster
+spec:
+  # 选择器匹配 RedisCluster 创建的所有 Service
+  selector:
+    matchLabels:
+      app: redis-cluster
+      instance: rediscluster-sample  # 匹配 RedisCluster 的名称
+  
+  # 监控端点配置
+  endpoints:
+  - port: redis  # Redis 服务端口名称 (6379)
+    path: /metrics  # 指标路径
+    interval: 30s   # 抓取间隔
+    scrapeTimeout: 10s  # 抓取超时
+    scheme: http    # 协议
+    
+    # 重标签配置
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_label_role]
+      targetLabel: redis_role  # master 或 replica
+    - sourceLabels: [__meta_kubernetes_service_label_instance]
+      targetLabel: redis_instance
+    - replacement: 'cluster'
+      targetLabel: redis_type
+    
+    # 指标重写规则
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'rediscluster_${1}'
+
+---
+# Redis Cluster Master 节点专用 ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rediscluster-sample-master-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: cluster-master
+spec:
+  selector:
+    matchLabels:
+      app: redis-cluster
+      role: master
+      instance: rediscluster-sample
+  
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 15s  # Master 节点更频繁的监控
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'cluster-master'
+      targetLabel: redis_role
+    - sourceLabels: [__meta_kubernetes_pod_label_shard]
+      targetLabel: cluster_shard
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'cluster_master_${1}'
+
+---
+# Redis Cluster Replica 节点专用 ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rediscluster-sample-replica-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: cluster-replica
+spec:
+  selector:
+    matchLabels:
+      app: redis-cluster
+      role: replica
+      instance: rediscluster-sample
+  
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 30s  # Replica 节点标准监控间隔
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - replacement: 'cluster-replica'
+      targetLabel: redis_role
+    - sourceLabels: [__meta_kubernetes_pod_label_shard]
+      targetLabel: cluster_shard
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'cluster_replica_${1}'
+
+---
+# Redis Cluster 整体监控 ServiceMonitor
+# 监控集群级别的指标和状态
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rediscluster-sample-cluster-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: cluster-overview
+spec:
+  selector:
+    matchLabels:
+      app: redis-cluster
+      component: cluster
+      instance: rediscluster-sample
+  
+  endpoints:
+  - port: cluster-info  # 集群信息端口（如果有专门的集群信息端点）
+    path: /cluster/metrics
+    interval: 60s  # 集群级别指标更新较慢
+    scrapeTimeout: 15s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service_name
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - replacement: 'cluster-overview'
+      targetLabel: redis_role
+    - replacement: 'rediscluster-sample'
+      targetLabel: cluster_name
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_cluster_(.*)'
+      targetLabel: __name__
+      replacement: 'cluster_${1}'
+
+---
+# Redis Cluster 节点发现 ServiceMonitor
+# 使用 Headless Service 进行节点发现
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: rediscluster-sample-nodes-monitor
+  namespace: default
+  labels:
+    app.kubernetes.io/name: redis-operator
+    app.kubernetes.io/component: monitoring
+    redis-type: cluster-nodes
+spec:
+  selector:
+    matchLabels:
+      app: redis-cluster
+      service-type: headless
+      instance: rediscluster-sample
+  
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    scheme: http
+    
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_ip]
+      targetLabel: pod_ip
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_label_role]
+      targetLabel: redis_role
+    - sourceLabels: [__meta_kubernetes_pod_label_shard]
+      targetLabel: cluster_shard
+    - replacement: 'cluster-node'
+      targetLabel: node_type
+    
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'redis_(.*)'
+      targetLabel: __name__
+      replacement: 'cluster_node_${1}'
+
+# ==========================================
+# 配置说明
+# ==========================================
+#
+# 1. RedisCluster 架构监控:
+#    - 通用监控: 监控所有集群节点
+#    - Master 节点监控: 专门监控 Master 节点
+#    - Replica 节点监控: 专门监控 Replica 节点
+#    - 集群整体监控: 监控集群级别的状态和指标
+#    - 节点发现监控: 通过 Headless Service 发现所有节点
+#
+# 2. 服务发现:
+#    - RedisCluster 控制器创建的 Service:
+#      * {name}-service: 集群服务入口
+#      * {name}-headless: Headless 服务用于节点发现
+#      * 可能还有按角色分组的服务
+#
+# 3. 端口配置:
+#    - 'redis': Redis 端口 (6379)
+#    - 'cluster-info': 集群信息端口（如果实现了专门的端点）
+#
+# 4. 集群特有标签:
+#    - 'redis_role': master/replica（节点角色）
+#    - 'cluster_shard': 分片标识
+#    - 'cluster_name': 集群名称
+#    - 'node_type': cluster-node（集群节点类型）
+#
+# 5. 监控频率:
+#    - Master 节点: 15s（关键节点，需要频繁监控）
+#    - Replica 节点: 30s（标准监控间隔）
+#    - 集群整体: 60s（集群状态变化较慢）
+#    - 节点发现: 30s（平衡发现速度和资源消耗）
+#
+# 6. 关键指标:
+#    - cluster_nodes: 集群节点总数
+#    - cluster_slots_assigned: 已分配的槽位数
+#    - cluster_slots_ok: 正常的槽位数
+#    - cluster_known_nodes: 已知节点数
+#    - cluster_size: 集群大小
+#    - redis_connected_clients: 连接的客户端数
+#    - redis_memory_usage_bytes: 内存使用量
+#    - redis_commands_processed_total: 处理的命令总数
+#
+# 7. 集群健康监控:
+#    - 槽位分配状态
+#    - 节点连接状态
+#    - 主从复制状态
+#    - 集群分区检测
+#
+# 8. 使用建议:
+#    - 生产环境建议使用所有 ServiceMonitor
+#    - 重点关注集群的槽位分配和节点状态
+#    - 设置告警监控集群分区和节点故障
+#    - 根据集群规模调整监控频率
+#
+# 9. 性能考虑:
+#    - 大型集群建议适当降低监控频率
+#    - 使用节点发现时注意 Prometheus 的抓取负载
+#    - 考虑使用指标采样来减少存储压力

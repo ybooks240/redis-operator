@@ -61,11 +61,17 @@ spec:
       - command:
         - /manager
         args:
-          - --leader-elect
-          - --health-probe-bind-address=:8081
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:8443
+        # - --metrics-secure=false  # 测试环境可手动开启
+        - --enable-metrics-collection=true
         image: controller:latest
         name: manager
-        ports: []
+        ports:
+        - containerPort: 8443
+          name: https
+          protocol: TCP
         securityContext:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
