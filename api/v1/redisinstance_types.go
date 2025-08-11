@@ -85,6 +85,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=redisi
 // +kubebuilder:printcolumn:name="READY",type=string,JSONPath=`.status.ready`,description="Ready status"
 // +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.status`,description="Status of the resource"
 // +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`,description="Age of the resource"

@@ -1,0 +1,9 @@
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: redisinstance-sample-view
+  namespace: default
+spec:
+  type: instance
+  resourceName: redisinstance-sample
+  resourceNamespace: default

@@ -32,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -83,20 +84,42 @@ func (r *RedisInstanceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			logs.Info("已经删除 Reconcile RedisInstance not found", "redisInstance", redisInstance)
-			if err = r.cleanupResources(ctx, req, redisInstance, logs); err != nil {
-				logs.Error(err, "Failed to cleanup resources")
-				return ctrl.Result{}, err
-			}
+			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}
+
+	// 检查是否正在删除
+	if redisInstance.DeletionTimestamp != nil {
+		logs.Info("RedisInstance is being deleted, cleaning up resources", "name", redisInstance.Name)
+		if err = r.cleanupResources(ctx, req, redisInstance, logs); err != nil {
+			logs.Error(err, "Failed to cleanup resources")
+			return ctrl.Result{}, err
+		}
+		// 移除 finalizer，使用重试机制避免资源版本冲突
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			// 重新获取最新的资源版本
+			latestRedisInstance := &redisv1.RedisInstance{}
+			if err := r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, latestRedisInstance); err != nil {
+				return err
+			}
+			controllerutil.RemoveFinalizer(latestRedisInstance, redisv1.RedisInstanceFinalizer)
+			return r.Update(ctx, latestRedisInstance)
+		})
+		if err != nil {
+			logs.Error(err, "Failed to remove finalizer")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// DELETE
 	// 更新redisinstance为terminated，等待手动移除finalizers
 	// CREATE
 	if redisInstance.Status.Conditions == nil {
 		logs.Info("创建 Reconcile RedisInstance will be create", "redisInstance", redisInstance)
 		// 设置 finalizer 但不设置到子资源上
-		redisInstance.ObjectMeta.Finalizers = []string{string(redisv1.RedisInstanceFinalizer)}
+		controllerutil.AddFinalizer(redisInstance, redisv1.RedisInstanceFinalizer)
 		err = r.Update(ctx, redisInstance)
 		if err != nil {
 			logs.Error(err, "Failed to update RedisInstance finalizer")
@@ -555,6 +578,8 @@ func (r *RedisInstanceReconciler) ensureResources(ctx context.Context, req ctrl.
 
 		if expectedConfig != currentConfig {
 			logs.Info("ConfigMap configuration changed, updating", "name", redisInstance.Name)
+			// 设置 Updating 状态
+			r.setUpdatingStatus(ctx, redisInstance, "ConfigUpdate", "ConfigMap configuration changed")
 			configMap.Data["redis.conf"] = expectedConfig
 			if err := r.Update(ctx, configMap); err != nil {
 				logs.Error(err, "Failed to update ConfigMap")
@@ -614,6 +639,8 @@ func (r *RedisInstanceReconciler) ensureResources(ctx context.Context, req ctrl.
 		// StatefulSet 存在，检查是否需要重启
 		if needsRestart {
 			logs.Info("StatefulSet needs restart due to config change, deleting existing StatefulSet", "name", redisInstance.Name)
+			// 设置 Updating 状态
+			r.setUpdatingStatus(ctx, redisInstance, "StatefulSetRestart", "StatefulSet needs restart due to config change")
 			// 移除 finalizer
 			if controllerutil.ContainsFinalizer(statefulSet, redisv1.RedisInstanceFinalizer) {
 				controllerutil.RemoveFinalizer(statefulSet, redisv1.RedisInstanceFinalizer)
@@ -663,6 +690,8 @@ func (r *RedisInstanceReconciler) ensureResources(ctx context.Context, req ctrl.
 			specUpdated := r.needsStatefulSetUpdate(ctx, redisInstance, statefulSet, logs)
 			if specUpdated {
 				logs.Info("StatefulSet spec needs update, performing rolling update")
+				// 设置 Updating 状态
+				r.setUpdatingStatus(ctx, redisInstance, "StatefulSetUpdate", "StatefulSet spec needs update")
 				updated = true
 			}
 
@@ -733,17 +762,29 @@ func (r *RedisInstanceReconciler) setUpdatingStatus(ctx context.Context, redisIn
 }
 
 func (r *RedisInstanceReconciler) updateRedisInstanceStatus(ctx context.Context, redisInstance *redisv1.RedisInstance) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		return r.doUpdateRedisInstanceStatus(ctx, redisInstance)
+	})
+}
+
+func (r *RedisInstanceReconciler) doUpdateRedisInstanceStatus(ctx context.Context, redisInstance *redisv1.RedisInstance) error {
+	// 重新获取最新的资源版本以避免冲突
+	latestInstance := &redisv1.RedisInstance{}
+	if err := r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, latestInstance); err != nil {
+		return err
+	}
+
 	// 获取 ConfigMap 状态
 	configMap := &corev1.ConfigMap{}
-	configMapErr := r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, configMap)
+	configMapErr := r.Get(ctx, types.NamespacedName{Name: latestInstance.Name, Namespace: latestInstance.Namespace}, configMap)
 
 	// 获取 Service 状态
 	service := &corev1.Service{}
-	serviceErr := r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, service)
+	serviceErr := r.Get(ctx, types.NamespacedName{Name: latestInstance.Name, Namespace: latestInstance.Namespace}, service)
 
 	// 获取 StatefulSet 状态
 	sts := &appsv1.StatefulSet{}
-	statefulSetErr := r.Get(ctx, types.NamespacedName{Name: redisInstance.Name, Namespace: redisInstance.Namespace}, sts)
+	statefulSetErr := r.Get(ctx, types.NamespacedName{Name: latestInstance.Name, Namespace: latestInstance.Namespace}, sts)
 
 	// 设置状态条件
 	var conditionStatus metav1.ConditionStatus
@@ -767,12 +808,12 @@ func (r *RedisInstanceReconciler) updateRedisInstanceStatus(ctx context.Context,
 	}
 
 	// 更新 RedisInstance 状态
-	if !redisInstance.DeletionTimestamp.IsZero() {
+	if !latestInstance.DeletionTimestamp.IsZero() {
 		// 如果正在删除，设置为 Terminated 状态
 		conditionStatus = metav1.ConditionUnknown
 		conditionType = string(redisv1.RedisPhaseTerminated)
 		reason = "Deleteing"
-		message = fmt.Sprintf("If you want to delete RedisInstance %s,you need remove finalizer.", redisInstance.Name)
+		message = fmt.Sprintf("If you want to delete RedisInstance %s,you need remove finalizer.", latestInstance.Name)
 	} else if configMapErr != nil || serviceErr != nil || statefulSetErr != nil {
 		// 如果任何资源不存在，设置为 Failed 状态
 		conditionStatus = metav1.ConditionFalse
@@ -792,7 +833,7 @@ func (r *RedisInstanceReconciler) updateRedisInstanceStatus(ctx context.Context,
 		conditionStatus = metav1.ConditionFalse
 		conditionType = string(redisv1.RedisPhasePending)
 		reason = "RedisInstancePending"
-		message = fmt.Sprintf("statefulSet for RedisInstance %s is pending.", redisInstance.Name)
+		message = fmt.Sprintf("statefulSet for RedisInstance %s is pending.", latestInstance.Name)
 	} else if sts.Status.ReadyReplicas == sts.Status.Replicas {
 		// 如果所有副本都就绪，设置为 Running 状态
 		conditionStatus = metav1.ConditionTrue
@@ -810,31 +851,31 @@ func (r *RedisInstanceReconciler) updateRedisInstanceStatus(ctx context.Context,
 	}
 
 	// 限制 Conditions 数量最多为 10 个
-	if len(redisInstance.Status.Conditions) >= 10 {
+	if len(latestInstance.Status.Conditions) >= 10 {
 		// 按时间排序，保留最新的 9 个
-		sort.Slice(redisInstance.Status.Conditions, func(i, j int) bool {
-			return redisInstance.Status.Conditions[i].LastTransitionTime.Before(&redisInstance.Status.Conditions[j].LastTransitionTime)
+		sort.Slice(latestInstance.Status.Conditions, func(i, j int) bool {
+			return latestInstance.Status.Conditions[i].LastTransitionTime.Before(&latestInstance.Status.Conditions[j].LastTransitionTime)
 		})
 		// 删除最旧的条件，直到只剩下 9 个
-		redisInstance.Status.Conditions = redisInstance.Status.Conditions[len(redisInstance.Status.Conditions)-9:]
+		latestInstance.Status.Conditions = latestInstance.Status.Conditions[len(latestInstance.Status.Conditions)-9:]
 	}
 
 	// 设置状态条件，并添加 ObservedGeneration 到 Condition 中
-	meta.SetStatusCondition(&redisInstance.Status.Conditions, metav1.Condition{
+	meta.SetStatusCondition(&latestInstance.Status.Conditions, metav1.Condition{
 		Type:               conditionType,
 		Status:             conditionStatus,
 		LastTransitionTime: metav1.Now(),
 		Reason:             reason,
 		Message:            message,
-		ObservedGeneration: redisInstance.Generation,
+		ObservedGeneration: latestInstance.Generation,
 	})
 
 	// 直接使用当前计算出的状态，而不是从conditions数组中获取
-	redisInstance.Status.LastConditionMessage = message
-	redisInstance.Status.Status = conditionType
-	redisInstance.Status.Ready = string(conditionStatus)
+	latestInstance.Status.LastConditionMessage = message
+	latestInstance.Status.Status = conditionType
+	latestInstance.Status.Ready = string(conditionStatus)
 
-	return r.Status().Update(ctx, redisInstance)
+	return r.Status().Update(ctx, latestInstance)
 }
 
 // SetupWithManager sets up the controller with the Manager.

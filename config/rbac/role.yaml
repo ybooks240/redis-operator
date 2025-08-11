@@ -5,11 +5,47 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - redis.github.com
   resources:
   - configs
   - redis
+  - redisclusters
   - redisinstances
+  - redismasterreplicas
+  - redissentinels
   verbs:
   - create
   - delete
@@ -23,7 +59,10 @@ rules:
   resources:
   - configs/finalizers
   - redis/finalizers
+  - redisclusters/finalizers
   - redisinstances/finalizers
+  - redismasterreplicas/finalizers
+  - redissentinels/finalizers
   verbs:
   - update
 - apiGroups:
@@ -31,7 +70,10 @@ rules:
   resources:
   - configs/status
   - redis/status
+  - redisclusters/status
   - redisinstances/status
+  - redismasterreplicas/status
+  - redissentinels/status
   verbs:
   - get
   - patch

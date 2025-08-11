@@ -11,6 +11,8 @@ spec:
     kind: RedisInstance
     listKind: RedisInstanceList
     plural: redisinstances
+    shortNames:
+    - redisi
     singular: redisinstance
   scope: Namespaced
   versions:

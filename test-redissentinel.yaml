@@ -1,0 +1,53 @@
+apiVersion: redis.github.com/v1
+kind: RedisSentinel
+metadata:
+  name: redissentinel-sample
+  namespace: default
+spec:
+  replicas: 3
+  image: redis:7.0
+  redis:
+    masterName: mymaster
+    master:
+      storage:
+        size: 1Gi
+        storageClassName: expandable-storage
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+    replica:
+      replicas: 2
+      storage:
+        size: 1Gi
+        storageClassName: expandable-storage
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+  storage:
+    size: 500Mi
+    storageClassName: expandable-storage
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+  config:
+    quorum: 2
+    downAfterMilliseconds: 30000
+    failoverTimeout: 180000
+    parallelSyncs: 1
+    additionalConfig:
+      sentinel-deny-scripts-reconfig: "yes"
+      sentinel-resolve-hostnames: "yes"
+  security:
+    authEnabled: false

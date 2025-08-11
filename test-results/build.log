@@ -1,0 +1,57 @@
+docker build -t redis-operator:test .
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.29kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.24
+#2 ...
+
+#3 [internal] load metadata for gcr.io/distroless/static:nonroot
+#3 DONE 0.8s
+
+#2 [internal] load metadata for docker.io/library/golang:1.24
+#2 DONE 1.7s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 160B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/3] FROM gcr.io/distroless/static:nonroot@sha256:cdf4daaf154e3e27cfffc799c16f343a384228f38646928a1513d925f473cb46
+#5 resolve gcr.io/distroless/static:nonroot@sha256:cdf4daaf154e3e27cfffc799c16f343a384228f38646928a1513d925f473cb46 done
+#5 DONE 0.0s
+
+#6 [builder 1/9] FROM docker.io/library/golang:1.24@sha256:2c89c41fb9efc3807029b59af69645867cfe978d2b877d475be0d72f6c6ce6f6
+#6 resolve docker.io/library/golang:1.24@sha256:2c89c41fb9efc3807029b59af69645867cfe978d2b877d475be0d72f6c6ce6f6 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 97.16kB done
+#7 DONE 0.0s
+
+#8 [builder 3/9] COPY go.mod go.mod
+#8 CACHED
+
+#9 [builder 2/9] WORKDIR /workspace
+#9 CACHED
+
+#10 [builder 4/9] COPY go.sum go.sum
+#10 CACHED
+
+#11 [builder 5/9] RUN go mod download
+#11 CACHED
+
+#12 [builder 6/9] COPY cmd/main.go cmd/main.go
+#12 CACHED
+
+#13 [builder 7/9] COPY api/ api/
+#13 DONE 0.0s
+
+#14 [builder 8/9] COPY internal/ internal/
+#14 DONE 0.0s
+
+#15 [builder 9/9] RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -o manager cmd/main.go
+#15 CANCELED
+ERROR: failed to build: failed to solve: Canceled: context canceled
+make: *** [docker-build] Error 130

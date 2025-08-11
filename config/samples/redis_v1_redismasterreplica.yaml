@@ -6,4 +6,68 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: redismasterreplica-sample
 spec:
-  # TODO(user): Add fields here
+  # Redis image to use
+  image: "redis:7.0"
+  
+  # Master node configuration
+  master:
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "200m"
+    storage:
+      size: "1Gi"
+      storageClassName: "standard"
+    config:
+      maxmemory-policy: "allkeys-lru"
+      save: "900 1 300 10 60 10000"
+  
+  # Replica nodes configuration
+  replica:
+    replicas: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "200m"
+    storage:
+      size: "1Gi"
+      storageClassName: "standard"
+    config:
+      replica-read-only: "yes"
+  
+  # Global resources (fallback if not specified in master/replica)
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "200m"
+  
+  # Global storage configuration
+  storage:
+    size: "1Gi"
+    storageClassName: "standard"
+  
+  # Global Redis configuration
+  config:
+    appendonly: "yes"
+    appendfsync: "everysec"
+    tcp-keepalive: "300"
+    timeout: "0"
+  
+  # Security configuration
+  security:
+    authEnabled: false
+    # passwordSecret:
+    #   name: redis-auth
+    #   key: password
+    # tls:
+    #   enabled: false
+    #   secretName: redis-tls

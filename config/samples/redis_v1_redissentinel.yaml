@@ -1,3 +1,7 @@
+# RedisSentinel 配置示例
+# 此文件展示了 RedisSentinel 的完整配置选项，包含可变配置参数
+# 用户可以根据实际需求修改这些配置值
+
 apiVersion: redis.github.com/v1
 kind: RedisSentinel
 metadata:
@@ -6,4 +10,159 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: redissentinel-sample
 spec:
-  # TODO(user): Add fields here
+  # ==========================================
+  # 基础配置 - 可根据环境需求修改
+  # ==========================================
+  
+  # Redis 镜像版本 - 可修改为所需版本
+  image: "redis:7.0"  # 支持: redis:6.2, redis:7.0, redis:7.2 等
+  
+  # Sentinel 实例数量 - 必须为奇数，最小值为 3
+  replicas: 3  # 推荐值: 3, 5, 7
+  
+  # ==========================================
+  # 资源配置 - 根据负载调整
+  # ==========================================
+  
+  # Sentinel 节点资源配置
+  resources:
+    requests:
+      memory: "128Mi"  # 最小内存需求
+      cpu: "50m"       # 最小 CPU 需求
+    limits:
+      memory: "256Mi"  # 最大内存限制
+      cpu: "100m"      # 最大 CPU 限制
+  
+  # ==========================================
+  # 存储配置 - 根据数据量调整
+  # ==========================================
+  
+  # Sentinel 存储配置
+  storage:
+    size: "500Mi"              # 存储大小
+    storageClassName: "standard"  # 存储类名称，可选: standard, fast-ssd, gp2 等
+  
+  # ==========================================
+  # Sentinel 功能配置 - 根据业务需求调整
+  # ==========================================
+  
+  # Sentinel 特定配置
+  config:
+    quorum: 2                    # 仲裁数量，通常为 (replicas/2 + 1)
+    downAfterMilliseconds: 30000 # 判定节点下线的时间（毫秒）
+    failoverTimeout: 180000      # 故障转移超时时间（毫秒）
+    parallelSyncs: 1             # 并行同步数量
+    # 额外配置选项
+    additionalConfig:
+      sentinel-deny-scripts-reconfig: "yes"  # 禁止脚本重新配置
+      sentinel-resolve-hostnames: "yes"      # 启用主机名解析
+      # 可添加更多 Sentinel 配置项
+      # sentinel-auth-pass: "your-password"   # 认证密码
+      # sentinel-announce-ip: "external-ip"   # 公告 IP
+  
+  # ==========================================
+  # 安全配置 - 生产环境建议启用
+  # ==========================================
+  
+  # 安全配置
+  security:
+    authEnabled: false  # 是否启用认证
+    # 启用认证时的配置示例:
+    # passwordSecret:
+    #   name: redis-auth     # Secret 名称
+    #   key: password        # Secret 中的密钥
+    # TLS 配置示例:
+    # tls:
+    #   enabled: false       # 是否启用 TLS
+    #   secretName: redis-tls # TLS 证书 Secret 名称
+  
+  # ==========================================
+  # 内嵌 Redis 实例配置 - 可根据性能需求调整
+  # ==========================================
+  
+  # 内嵌的 Redis 实例配置
+  redis:
+    # Redis Master 配置
+    master:
+      resources:
+        limits:
+          cpu: 200m      # Master CPU 限制
+          memory: 256Mi  # Master 内存限制
+        requests:
+          cpu: 100m      # Master CPU 请求
+          memory: 128Mi  # Master 内存请求
+      storage:
+        size: 2Gi                # Master 存储大小
+        storageClassName: standard # Master 存储类
+      # Master 特定配置
+      config:
+        # save: "900 1 300 10 60 10000"  # 持久化策略
+        # maxmemory-policy: "allkeys-lru"  # 内存淘汰策略
+    
+    # Redis Replica 配置
+    replica:
+      replicas: 2  # Replica 数量
+      resources:
+        limits:
+          cpu: 200m      # Replica CPU 限制
+          memory: 256Mi  # Replica 内存限制
+        requests:
+          cpu: 100m      # Replica CPU 请求
+          memory: 128Mi  # Replica 内存请求
+      storage:
+        size: 2Gi                # Replica 存储大小
+        storageClassName: standard # Replica 存储类
+      # Replica 特定配置
+      config:
+        # replica-read-only: "yes"  # 只读模式
+    
+    # 全局 Redis 配置
+    config:
+      # 可添加全局 Redis 配置项
+      # timeout: "300"              # 客户端超时时间
+      # tcp-keepalive: "60"         # TCP keepalive
+      # maxclients: "10000"         # 最大客户端连接数
+    
+    # Master 名称（用于 Sentinel 配置）
+    masterName: "mymaster"  # 可自定义 master 名称
+  
+  # ==========================================
+  # 外部 Redis 引用配置 - 监控外部 Redis 集群
+  # ==========================================
+  
+  # 引用外部 RedisMasterReplica 资源（与内嵌 Redis 二选一）
+  # 注释掉此部分以使用内嵌式 Redis 配置
+  # masterReplicaRef:
+  #   name: "redismasterreplica-sample"  # 外部 RedisMasterReplica 资源名称
+  #   namespace: "default"               # 可选，默认为相同命名空间
+  #   masterName: "mymaster"             # Sentinel 配置中使用的 master 名称
+
+# ==========================================
+# 配置说明和最佳实践
+# ==========================================
+#
+# 1. 镜像选择:
+#    - 生产环境建议使用具体版本号，避免使用 latest
+#    - Redis 7.x 提供更好的性能和安全性
+#
+# 2. 副本数量:
+#    - Sentinel 副本数必须为奇数（3, 5, 7）
+#    - 3 个副本适合大多数场景
+#    - 5 个或更多副本适合高可用性要求极高的场景
+#
+# 3. 资源配置:
+#    - 根据实际负载调整 CPU 和内存
+#    - Sentinel 本身资源消耗较低
+#    - Redis 实例需要根据数据量和访问量调整
+#
+# 4. 存储配置:
+#    - 生产环境建议使用 SSD 存储类
+#    - 存储大小应考虑数据增长和备份需求
+#
+# 5. 安全配置:
+#    - 生产环境强烈建议启用认证
+#    - 敏感环境建议启用 TLS
+#
+# 6. 网络配置:
+#    - 确保 Sentinel 端口 (26379) 和 Redis 端口 (6379) 可访问
+#    - 考虑网络策略和防火墙规则

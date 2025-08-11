@@ -1,0 +1,61 @@
+# Redis 聚合视图示例文件
+# 这个文件展示了如何为不同类型的 Redis 资源创建聚合视图
+
+# 1. RedisSentinel 聚合视图（已存在的实例）
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: sentinel-view
+  namespace: default
+spec:
+  type: sentinel
+  resourceName: redissentinel-sample
+  resourceNamespace: default
+
+---
+# 2. RedisCluster 聚合视图示例
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: cluster-view
+  namespace: default
+spec:
+  type: cluster
+  resourceName: rediscluster-sample
+  resourceNamespace: default
+
+---
+# 3. RedisInstance 聚合视图示例
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: instance-view
+  namespace: default
+spec:
+  type: instance
+  resourceName: redisinstance-sample
+  resourceNamespace: default
+
+---
+# 4. RedisMasterReplica 聚合视图示例
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: masterreplica-view
+  namespace: default
+spec:
+  type: masterreplica
+  resourceName: redismasterreplica-sample
+  resourceNamespace: default
+
+---
+# 5. 跨命名空间的 Redis 聚合视图示例
+apiVersion: redis.github.com/v1
+kind: Redis
+metadata:
+  name: cross-namespace-view
+  namespace: monitoring
+spec:
+  type: sentinel
+  resourceName: redis-monitoring
+  resourceNamespace: redis-system

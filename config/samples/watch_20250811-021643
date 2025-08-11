@@ -1,0 +1,22 @@
+Every 2.0s: kubectl get po  && kubectl get redisi && kubectl get redisc && kubectl get  rediss && kubectl get redisr                             MacBookPro: 02:16:41
+                                                                                                                                                        in 0.261s (0)
+NAME                              READY   STATUS             RESTARTS      AGE                                                                                       
+redissentinel-sample-redis-0      1/1     Running            0             9m29s                                                                                     
+redissentinel-sample-redis-1      1/1     Running            0             9m23s                                                                                     
+redissentinel-sample-redis-2      1/1     Running            0             9m12s                                                                                     
+redissentinel-sample-sentinel-0   0/1     CrashLoopBackOff   4 (25s ago)   115s                                                                                      
+No resources found in default namespace.                                                                                                                             
+No resources found in default namespace.                                                                                                                             
+NAME                   READY   STATUS    SENTINELS   MASTER     AGE     MESSAGE                                                                                      
+redissentinel-sample   false   Pending               mymaster   9m29s   Waiting for sentinels to be ready                                                            
+No resources found in default namespace.                                                                                                                             
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     
+                                                                                                                                                                     

@@ -51,7 +51,19 @@ var _ = Describe("RedisCluster Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: redisv1.RedisClusterSpec{
+						Masters:           3,
+						ReplicasPerMaster: 1,
+						Storage: redisv1.StorageSpec{
+							Size:             "1Gi",
+							StorageClassName: "standard",
+						},
+						Config: redisv1.ClusterConfig{
+							ClusterNodeTimeout:         15000,
+							ClusterRequireFullCoverage: "yes",
+							ClusterMigrationBarrier:    1,
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}

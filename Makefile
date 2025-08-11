@@ -146,6 +146,38 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > dist/install.yaml
 
+##@ Monitoring
+
+.PHONY: deploy-monitoring
+deploy-monitoring: ## Deploy monitoring, alerting and logging stack
+	./scripts/deploy-monitoring.sh
+
+.PHONY: deploy-monitoring-only
+deploy-monitoring-only: ## Deploy only monitoring components (Prometheus, Grafana, AlertManager)
+	./scripts/deploy-monitoring.sh --monitoring-only
+
+.PHONY: deploy-logging-only
+deploy-logging-only: ## Deploy only logging components (Fluent Bit, Elasticsearch, Kibana)
+	./scripts/deploy-monitoring.sh --logging-only
+
+.PHONY: deploy-tracing-only
+deploy-tracing-only: ## Deploy only tracing components (Jaeger)
+	./scripts/deploy-monitoring.sh --tracing-only
+
+.PHONY: cleanup-monitoring
+cleanup-monitoring: ## Clean up all monitoring, alerting and logging components
+	./scripts/cleanup-monitoring.sh
+
+.PHONY: cleanup-monitoring-force
+cleanup-monitoring-force: ## Force clean up all monitoring components without confirmation
+	./scripts/cleanup-monitoring.sh --force
+
+.PHONY: monitoring-config
+monitoring-config: kustomize ## Generate monitoring configuration manifests
+	$(KUSTOMIZE) build config/monitoring > dist/monitoring.yaml
+	$(KUSTOMIZE) build config/logging > dist/logging.yaml
+	$(KUSTOMIZE) build config/tracing > dist/tracing.yaml
+
 ##@ Deployment
 
 ifndef ignore-not-found

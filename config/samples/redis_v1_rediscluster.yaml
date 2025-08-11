@@ -6,4 +6,74 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: rediscluster-sample
 spec:
-  # TODO(user): Add fields here
+  # Redis image to use
+  image: "redis:7.0"
+  
+  # Number of master nodes in the cluster (minimum 3)
+  masters: 3
+  
+  # Number of replica nodes per master
+  replicasPerMaster: 1
+  
+  # Resources for cluster nodes
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  # Storage configuration for cluster nodes
+  storage:
+    size: "100Mi"
+    storageClassName: "standard"
+  
+  # Redis cluster-specific configuration
+  config:
+    clusterConfigEpoch: 15000
+    clusterNodeTimeout: 15000
+    clusterRequireFullCoverage: "yes"
+    clusterMigrationBarrier: 1
+    additionalConfig:
+      appendonly: "yes"
+      appendfsync: "everysec"
+      save: "900 1 300 10 60 10000"
+      maxmemory-policy: "allkeys-lru"
+      tcp-keepalive: "300"
+      timeout: "0"
+  
+  # Security configuration
+  security:
+    authEnabled: false
+    # passwordSecret:
+    #   name: redis-auth
+    #   key: password
+    # tls:
+    #   enabled: false
+    #   secretName: redis-tls
+  
+  # Node selector for pod assignment
+  # nodeSelector:
+  #   kubernetes.io/os: linux
+  
+  # Tolerations for pod assignment
+  # tolerations:
+  # - key: "redis"
+  #   operator: "Equal"
+  #   value: "true"
+  #   effect: "NoSchedule"
+  
+  # Affinity for pod assignment
+  # affinity:
+  #   podAntiAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #     - weight: 100
+  #       podAffinityTerm:
+  #         labelSelector:
+  #           matchExpressions:
+  #           - key: app
+  #             operator: In
+  #             values:
+  #             - redis-cluster
+  #         topologyKey: kubernetes.io/hostname

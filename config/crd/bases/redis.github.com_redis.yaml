@@ -11,13 +11,41 @@ spec:
     kind: Redis
     listKind: RedisList
     plural: redis
+    shortNames:
+    - redis
     singular: redis
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - description: Redis resource type
+      jsonPath: .status.type
+      name: TYPE
+      type: string
+    - description: Ready status
+      jsonPath: .status.ready
+      name: READY
+      type: string
+    - description: Current status
+      jsonPath: .status.status
+      name: STATUS
+      type: string
+    - description: Resource name
+      jsonPath: .spec.resourceName
+      name: RESOURCE
+      type: string
+    - description: Age
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - description: Message
+      jsonPath: .status.lastConditionMessage
+      name: MESSAGE
+      priority: 1
+      type: string
+    name: v1
     schema:
       openAPIV3Schema:
-        description: Redis is the Schema for the redis API
+        description: Redis is the Schema for the redis API (aggregated view)
         properties:
           apiVersion:
             description: |-
@@ -39,13 +67,149 @@ spec:
           spec:
             description: spec defines the desired state of Redis
             properties:
-              foo:
-                description: foo is an example field of Redis. Edit redis_types.go
-                  to remove/update
+              resourceName:
+                description: Name of the actual Redis resource
                 type: string
+              resourceNamespace:
+                description: Namespace of the actual Redis resource
+                type: string
+              type:
+                description: Type of Redis resource (cluster, instance, masterreplica,
+                  sentinel)
+                type: string
+            required:
+            - resourceName
+            - type
             type: object
           status:
             description: status defines the observed state of Redis
+            properties:
+              conditions:
+                description: Conditions from the underlying resource
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              lastConditionMessage:
+                description: Last condition message
+                type: string
+              ready:
+                description: Ready status
+                type: string
+              resourceStatus:
+                description: Resource-specific status information
+                properties:
+                  cluster:
+                    description: For RedisCluster
+                    properties:
+                      masters:
+                        format: int32
+                        type: integer
+                      nodesReady:
+                        format: int32
+                        type: integer
+                      replicas:
+                        format: int32
+                        type: integer
+                      serviceName:
+                        type: string
+                    type: object
+                  instance:
+                    description: For RedisInstance
+                    properties:
+                      readyReplicas:
+                        format: int32
+                        type: integer
+                      replicas:
+                        format: int32
+                        type: integer
+                    type: object
+                  masterReplica:
+                    description: For RedisMasterReplica
+                    properties:
+                      masterPod:
+                        type: string
+                      masterReady:
+                        type: boolean
+                      replicaCount:
+                        format: int32
+                        type: integer
+                      replicaReady:
+                        format: int32
+                        type: integer
+                    type: object
+                  sentinel:
+                    description: For RedisSentinel
+                    properties:
+                      monitoredMaster:
+                        type: string
+                      sentinelCount:
+                        format: int32
+                        type: integer
+                      sentinelReady:
+                        format: int32
+                        type: integer
+                      serviceName:
+                        type: string
+                    type: object
+                type: object
+              status:
+                description: Current status/phase
+                type: string
+              type:
+                description: Type of Redis resource
+                type: string
             type: object
         required:
         - spec

@@ -5,9 +5,10 @@ metadata:
     app.kubernetes.io/name: redis-operator
     app.kubernetes.io/managed-by: kustomize
   name: redisinstance-sample
+  namespace: test
 spec:
   image: redis:7.0
-  replicas: 3
+  replicas: 1
   storage:
     size: 100Mi
     storageClassName: standard

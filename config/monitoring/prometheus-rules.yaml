@@ -1,0 +1,229 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: redis-operator-alerts
+  namespace: redis-operator-system
+  labels:
+    app: redis-operator
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: redis-operator.rules
+    interval: 30s
+    rules:
+    # 控制器级别告警
+    - alert: RedisOperatorControllerDown
+      expr: up{job="redis-operator-controller-manager-metrics-service"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis Operator controller is down"
+        description: "Redis Operator controller has been down for more than 5 minutes."
+
+    - alert: RedisOperatorHighReconcileErrors
+      expr: rate(redis_operator_reconcile_errors_total[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High reconcile error rate in Redis Operator"
+        description: "Redis Operator is experiencing high reconcile error rate: {{ $value }} errors/sec for {{ $labels.controller }}/{{ $labels.namespace }}/{{ $labels.name }}."
+
+    - alert: RedisOperatorSlowReconcile
+      expr: histogram_quantile(0.95, rate(redis_operator_reconcile_duration_seconds_bucket[5m])) > 30
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Slow reconcile operations in Redis Operator"
+        description: "95th percentile reconcile duration is {{ $value }}s for {{ $labels.controller }}/{{ $labels.namespace }}/{{ $labels.name }}."
+
+    # Redis 实例级别告警
+    - alert: RedisInstanceDown
+      expr: redis_instance_status == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis instance is down"
+        description: "Redis instance {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.role }}) is down."
+
+    - alert: RedisInstanceHighMemoryUsage
+      expr: redis_instance_memory_usage_bytes > 1073741824  # 1GB
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis instance high memory usage"
+        description: "Redis instance {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.role }}) is using {{ $value | humanizeBytes }} of memory."
+
+    - alert: RedisInstanceHighConnectedClients
+      expr: redis_instance_connected_clients > 1000
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis instance has too many connected clients"
+        description: "Redis instance {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.role }}) has {{ $value }} connected clients."
+
+    - alert: RedisInstanceLowHitRate
+      expr: |
+        (
+          rate(redis_instance_keyspace_hits_total[5m]) / 
+          (rate(redis_instance_keyspace_hits_total[5m]) + rate(redis_instance_keyspace_misses_total[5m]))
+        ) < 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis instance low cache hit rate"
+        description: "Redis instance {{ $labels.namespace }}/{{ $labels.name }} ({{ $labels.role }}) has a cache hit rate of {{ $value | humanizePercentage }}."
+
+    # Redis Sentinel 级别告警
+    - alert: RedisSentinelMasterDown
+      expr: redis_sentinel_master_status == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis Sentinel master is down"
+        description: "Redis Sentinel {{ $labels.namespace }}/{{ $labels.name }} reports master {{ $labels.master_name }} is down."
+
+    - alert: RedisSentinelInsufficientSentinels
+      expr: redis_sentinel_sentinels_total < 3
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Insufficient Redis Sentinels"
+        description: "Redis Sentinel {{ $labels.namespace }}/{{ $labels.name }} has only {{ $value }} sentinels monitoring master {{ $labels.master_name }}. Recommended minimum is 3."
+
+    - alert: RedisSentinelFrequentFailovers
+      expr: rate(redis_sentinel_failover_total[1h]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Frequent Redis Sentinel failovers"
+        description: "Redis Sentinel {{ $labels.namespace }}/{{ $labels.name }} is experiencing frequent failovers for master {{ $labels.master_name }}: {{ $value }} failovers/hour."
+
+    # Redis Cluster 级别告警
+    - alert: RedisClusterStateNotOK
+      expr: redis_cluster_state == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis Cluster state is not OK"
+        description: "Redis Cluster {{ $labels.namespace }}/{{ $labels.name }} state is not OK."
+
+    - alert: RedisClusterInsufficientNodes
+      expr: redis_cluster_nodes_total < 6
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis Cluster has insufficient nodes"
+        description: "Redis Cluster {{ $labels.namespace }}/{{ $labels.name }} has only {{ $value }} nodes. Recommended minimum is 6 (3 masters + 3 replicas)."
+
+    - alert: RedisClusterIncompleteSlotCoverage
+      expr: redis_cluster_slots_assigned < 16384
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis Cluster incomplete slot coverage"
+        description: "Redis Cluster {{ $labels.namespace }}/{{ $labels.name }} has only {{ $value }}/16384 slots assigned."
+
+    # 资源使用告警
+    - alert: RedisHighCPUUsage
+      expr: redis_resource_cpu_usage_cores > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis high CPU usage"
+        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} container {{ $labels.container }} is using {{ $value }} CPU cores."
+
+    - alert: RedisHighMemoryUsage
+      expr: redis_resource_memory_usage_bytes > 2147483648  # 2GB
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis high memory usage"
+        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} container {{ $labels.container }} is using {{ $value | humanizeBytes }} of memory."
+
+    - alert: RedisPersistenceFailure
+      expr: increase(redis_persistence_operations_total{result="failure"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis persistence operation failed"
+        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} {{ $labels.operation }} operation failed."
+
+    # 网络相关告警
+    - alert: RedisHighNetworkIO
+      expr: rate(redis_resource_network_io_bytes_total[5m]) > 104857600  # 100MB/s
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis high network I/O"
+        description: "Redis {{ $labels.namespace }}/{{ $labels.name }} pod {{ $labels.pod }} has high {{ $labels.direction }} network I/O: {{ $value | humanizeBytes }}/s."
+
+  - name: redis-operator.recording
+    interval: 30s
+    rules:
+    # 记录规则 - 计算聚合指标
+    - record: redis_operator:reconcile_rate
+      expr: rate(redis_operator_reconcile_total[5m])
+
+    - record: redis_operator:reconcile_error_rate
+      expr: rate(redis_operator_reconcile_errors_total[5m])
+
+    - record: redis_operator:reconcile_success_rate
+      expr: |
+        (
+          rate(redis_operator_reconcile_total{result="success"}[5m]) /
+          rate(redis_operator_reconcile_total[5m])
+        )
+
+    - record: redis_instance:cache_hit_rate
+      expr: |
+        (
+          rate(redis_instance_keyspace_hits_total[5m]) /
+          (rate(redis_instance_keyspace_hits_total[5m]) + rate(redis_instance_keyspace_misses_total[5m]))
+        )
+
+    - record: redis_instance:commands_per_second
+      expr: rate(redis_instance_commands_processed_total[5m])
+
+    - record: redis_cluster:average_slots_per_node
+      expr: redis_cluster_slots_assigned / redis_cluster_nodes_total
+
+    - record: redis_sentinel:failover_rate
+      expr: rate(redis_sentinel_failover_total[1h])
+
+    # 按命名空间聚合的指标
+    - record: redis_operator:instances_by_namespace
+      expr: count by (namespace) (redis_instance_status)
+
+    - record: redis_operator:healthy_instances_by_namespace
+      expr: count by (namespace) (redis_instance_status == 1)
+
+    - record: redis_operator:unhealthy_instances_by_namespace
+      expr: count by (namespace) (redis_instance_status == 0)
+
+    # 资源使用聚合
+    - record: redis_operator:total_cpu_usage
+      expr: sum(redis_resource_cpu_usage_cores)
+
+    - record: redis_operator:total_memory_usage
+      expr: sum(redis_resource_memory_usage_bytes)
+
+    - record: redis_operator:total_network_io
+      expr: sum(rate(redis_resource_network_io_bytes_total[5m]))

@@ -1,0 +1,413 @@
+=== RUN   TestControllers
+Running Suite: Controller Suite - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller
+============================================================================================================================
+Random Seed: [1m1754853498[0m
+
+Will run [1m9[0m of [1m9[0m specs
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [2.009 seconds][0m
+[0mRedisMasterReplica Controller [38;5;9m[1mWhen reconciling a resource [BeforeEach] [0mshould successfully reconcile the resource[0m
+  [38;5;9m[BeforeEach][0m [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redismasterreplica_controller_test.go:45[0m
+  [38;5;243m[It] /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redismasterreplica_controller_test.go:69[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m creating the custom resource for the Kind RedisMasterReplica [38;5;243m@ 08/11/25 03:18:21.907[0m
+  [38;5;9m[FAILED][0m in [BeforeEach] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redismasterreplica_controller_test.go:56 [38;5;243m@ 08/11/25 03:18:23.915[0m
+  [38;5;9m[FAILED][0m in [AfterEach] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redismasterreplica_controller_test.go:64 [38;5;243m@ 08/11/25 03:18:23.916[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Expected success, but got an error:
+      <*errors.StatusError | 0x14000a16e60>: 
+      RedisMasterReplica.redis.github.com "test-resource" is invalid: [spec.storage.size: Required value, spec.master.storage.size: Required value, spec.replica.storage.size: Required value]
+      {
+          ErrStatus: {
+              TypeMeta: {Kind: "", APIVersion: ""},
+              ListMeta: {
+                  SelfLink: "",
+                  ResourceVersion: "",
+                  Continue: "",
+                  RemainingItemCount: nil,
+              },
+              Status: "Failure",
+              Message: "RedisMasterReplica.redis.github.com \"test-resource\" is invalid: [spec.storage.size: Required value, spec.master.storage.size: Required value, spec.replica.storage.size: Required value]",
+              Reason: "Invalid",
+              Details: {
+                  Name: "test-resource",
+                  Group: "redis.github.com",
+                  Kind: "RedisMasterReplica",
+                  UID: "",
+                  Causes: [
+                      {
+                          Type: "FieldValueRequired",
+                          Message: "Required value",
+                          Field: "spec.storage.size",
+                      },
+                      {
+                          Type: "FieldValueRequired",
+                          Message: "Required value",
+                          Field: "spec.master.storage.size",
+                      },
+                      {
+                          Type: "FieldValueRequired",
+                          Message: "Required value",
+                          Field: "spec.replica.storage.size",
+                      },
+                  ],
+                  RetryAfterSeconds: 0,
+              },
+              Code: 422,
+          },
+      }[0m
+  [38;5;9mIn [1m[BeforeEach][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redismasterreplica_controller_test.go:56[0m [38;5;243m@ 08/11/25 03:18:23.915[0m
+
+  There were [1m[38;5;9madditional failures[0m detected.  To view them in detail run [1mginkgo -vv[0m
+[38;5;243m------------------------------[0m
+[38;5;10m•[0m
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [0.005 seconds][0m
+[0mRedisInstance Controller [38;5;9m[1mWhen reconciling a resource [BeforeEach] [0mshould successfully reconcile the resource[0m
+  [38;5;9m[BeforeEach][0m [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redisinstance_controller_test.go:45[0m
+  [38;5;243m[It] /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redisinstance_controller_test.go:69[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m creating the custom resource for the Kind RedisInstance [38;5;243m@ 08/11/25 03:18:23.924[0m
+  [38;5;9m[FAILED][0m in [BeforeEach] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redisinstance_controller_test.go:56 [38;5;243m@ 08/11/25 03:18:23.928[0m
+  [38;5;9m[FAILED][0m in [AfterEach] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redisinstance_controller_test.go:64 [38;5;243m@ 08/11/25 03:18:23.929[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Expected success, but got an error:
+      <*errors.StatusError | 0x140000d7b80>: 
+      RedisInstance.redis.github.com "test-resource" is invalid: spec.storage.size: Required value
+      {
+          ErrStatus: {
+              TypeMeta: {Kind: "", APIVersion: ""},
+              ListMeta: {
+                  SelfLink: "",
+                  ResourceVersion: "",
+                  Continue: "",
+                  RemainingItemCount: nil,
+              },
+              Status: "Failure",
+              Message: "RedisInstance.redis.github.com \"test-resource\" is invalid: spec.storage.size: Required value",
+              Reason: "Invalid",
+              Details: {
+                  Name: "test-resource",
+                  Group: "redis.github.com",
+                  Kind: "RedisInstance",
+                  UID: "",
+                  Causes: [
+                      {
+                          Type: "FieldValueRequired",
+                          Message: "Required value",
+                          Field: "spec.storage.size",
+                      },
+                  ],
+                  RetryAfterSeconds: 0,
+              },
+              Code: 422,
+          },
+      }[0m
+  [38;5;9mIn [1m[BeforeEach][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redisinstance_controller_test.go:56[0m [38;5;243m@ 08/11/25 03:18:23.928[0m
+
+  There were [1m[38;5;9madditional failures[0m detected.  To view them in detail run [1mginkgo -vv[0m
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [0.003 seconds][0m
+[0mRedisSentinel Controller [38;5;243mWhen reconciling a RedisSentinel with embedded Redis [38;5;9m[1m[It] should successfully reconcile and create all required resources[0m
+[38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:148[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m Reconciling the created resource [38;5;243m@ 08/11/25 03:18:23.93[0m
+  2025-08-11T03:18:23+08:00	INFO	Initializing RedisSentinel	{"name": "test-sentinel-embedded"}
+  2025-08-11T03:18:23+08:00	INFO	Creating Redis Headless Service	{"name": "test-sentinel-embedded-redis-headless"}
+  2025-08-11T03:18:23+08:00	INFO	Creating Redis StatefulSet	{"name": "test-sentinel-embedded-redis"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel ConfigMap	{"name": "test-sentinel-embedded-sentinel-config"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel StatefulSet with dynamic config	{"name": "test-sentinel-embedded-sentinel"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel Service	{"name": "test-sentinel-embedded-sentinel-service"}
+  2025-08-11T03:18:23+08:00	ERROR	Failed to update RedisSentinel status	{"error": "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-embedded\" not found"}
+  github.com/ybooks240/redis-operator/internal/controller.(*RedisSentinelReconciler).Reconcile
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller.go:111
+  github.com/ybooks240/redis-operator/internal/controller.init.func1.2.3
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:150
+  github.com/onsi/ginkgo/v2/internal.extractBodyFunction.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/node.go:475
+  github.com/onsi/ginkgo/v2/internal.(*Suite).runNode.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/suite.go:894
+  [38;5;9m[FAILED][0m in [It] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:153 [38;5;243m@ 08/11/25 03:18:23.933[0m
+  [1mSTEP:[0m Cleanup the RedisSentinel resource [38;5;243m@ 08/11/25 03:18:23.933[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Unexpected error:
+      <*fmt.wrapError | 0x14000132a00>: 
+      failed to update RedisSentinel status: redissentinels.redis.github.com "test-sentinel-embedded" not found
+      {
+          msg: "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-embedded\" not found",
+          err: <*errors.StatusError | 0x14000555540>{
+              ErrStatus: {
+                  TypeMeta: {Kind: "", APIVersion: ""},
+                  ListMeta: {
+                      SelfLink: "",
+                      ResourceVersion: "",
+                      Continue: "",
+                      RemainingItemCount: nil,
+                  },
+                  Status: "Failure",
+                  Message: "redissentinels.redis.github.com \"test-sentinel-embedded\" not found",
+                  Reason: "NotFound",
+                  Details: {
+                      Name: "test-sentinel-embedded",
+                      Group: "redis.github.com",
+                      Kind: "redissentinels",
+                      UID: "",
+                      Causes: nil,
+                      RetryAfterSeconds: 0,
+                  },
+                  Code: 404,
+              },
+          },
+      }
+  occurred[0m
+  [38;5;9mIn [1m[It][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:153[0m [38;5;243m@ 08/11/25 03:18:23.933[0m
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [0.000 seconds][0m
+[0mRedisSentinel Controller [38;5;243mWhen reconciling a RedisSentinel with embedded Redis [38;5;9m[1m[It] should update status correctly[0m
+[38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:214[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m Reconciling the resource multiple times [38;5;243m@ 08/11/25 03:18:23.933[0m
+  2025-08-11T03:18:23+08:00	INFO	Initializing RedisSentinel	{"name": "test-sentinel-embedded"}
+  2025-08-11T03:18:23+08:00	INFO	Creating Redis Headless Service	{"name": "test-sentinel-embedded-redis-headless"}
+  2025-08-11T03:18:23+08:00	INFO	Creating Redis StatefulSet	{"name": "test-sentinel-embedded-redis"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel ConfigMap	{"name": "test-sentinel-embedded-sentinel-config"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel StatefulSet with dynamic config	{"name": "test-sentinel-embedded-sentinel"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel Service	{"name": "test-sentinel-embedded-sentinel-service"}
+  2025-08-11T03:18:23+08:00	ERROR	Failed to update RedisSentinel status	{"error": "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-embedded\" not found"}
+  github.com/ybooks240/redis-operator/internal/controller.(*RedisSentinelReconciler).Reconcile
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller.go:111
+  github.com/ybooks240/redis-operator/internal/controller.init.func1.2.4
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:217
+  github.com/onsi/ginkgo/v2/internal.extractBodyFunction.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/node.go:475
+  github.com/onsi/ginkgo/v2/internal.(*Suite).runNode.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/suite.go:894
+  [38;5;9m[FAILED][0m in [It] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:220 [38;5;243m@ 08/11/25 03:18:23.933[0m
+  [1mSTEP:[0m Cleanup the RedisSentinel resource [38;5;243m@ 08/11/25 03:18:23.933[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Unexpected error:
+      <*fmt.wrapError | 0x14000459c60>: 
+      failed to update RedisSentinel status: redissentinels.redis.github.com "test-sentinel-embedded" not found
+      {
+          msg: "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-embedded\" not found",
+          err: <*errors.StatusError | 0x14000792b40>{
+              ErrStatus: {
+                  TypeMeta: {Kind: "", APIVersion: ""},
+                  ListMeta: {
+                      SelfLink: "",
+                      ResourceVersion: "",
+                      Continue: "",
+                      RemainingItemCount: nil,
+                  },
+                  Status: "Failure",
+                  Message: "redissentinels.redis.github.com \"test-sentinel-embedded\" not found",
+                  Reason: "NotFound",
+                  Details: {
+                      Name: "test-sentinel-embedded",
+                      Group: "redis.github.com",
+                      Kind: "redissentinels",
+                      UID: "",
+                      Causes: nil,
+                      RetryAfterSeconds: 0,
+                  },
+                  Code: 404,
+              },
+          },
+      }
+  occurred[0m
+  [38;5;9mIn [1m[It][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:220[0m [38;5;243m@ 08/11/25 03:18:23.933[0m
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [0.000 seconds][0m
+[0mRedisSentinel Controller [38;5;243mWhen reconciling a RedisSentinel with external MasterReplica reference [38;5;9m[1m[It] should successfully reconcile with external reference[0m
+[38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:329[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m Reconciling the created resource [38;5;243m@ 08/11/25 03:18:23.934[0m
+  2025-08-11T03:18:23+08:00	INFO	Initializing RedisSentinel	{"name": "test-sentinel-external"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel ConfigMap	{"name": "test-sentinel-external-sentinel-config"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel StatefulSet with dynamic config	{"name": "test-sentinel-external-sentinel"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel Service	{"name": "test-sentinel-external-sentinel-service"}
+  2025-08-11T03:18:23+08:00	ERROR	Failed to update RedisSentinel status	{"error": "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-external\" not found"}
+  github.com/ybooks240/redis-operator/internal/controller.(*RedisSentinelReconciler).Reconcile
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller.go:111
+  github.com/ybooks240/redis-operator/internal/controller.init.func1.3.3
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:331
+  github.com/onsi/ginkgo/v2/internal.extractBodyFunction.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/node.go:475
+  github.com/onsi/ginkgo/v2/internal.(*Suite).runNode.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/suite.go:894
+  [38;5;9m[FAILED][0m in [It] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:334 [38;5;243m@ 08/11/25 03:18:23.934[0m
+  [1mSTEP:[0m Cleanup the RedisSentinel resource [38;5;243m@ 08/11/25 03:18:23.934[0m
+  [1mSTEP:[0m Cleanup the RedisMasterReplica resource [38;5;243m@ 08/11/25 03:18:23.934[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Unexpected error:
+      <*fmt.wrapError | 0x140001328c0>: 
+      failed to update RedisSentinel status: redissentinels.redis.github.com "test-sentinel-external" not found
+      {
+          msg: "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-external\" not found",
+          err: <*errors.StatusError | 0x14000793ae0>{
+              ErrStatus: {
+                  TypeMeta: {Kind: "", APIVersion: ""},
+                  ListMeta: {
+                      SelfLink: "",
+                      ResourceVersion: "",
+                      Continue: "",
+                      RemainingItemCount: nil,
+                  },
+                  Status: "Failure",
+                  Message: "redissentinels.redis.github.com \"test-sentinel-external\" not found",
+                  Reason: "NotFound",
+                  Details: {
+                      Name: "test-sentinel-external",
+                      Group: "redis.github.com",
+                      Kind: "redissentinels",
+                      UID: "",
+                      Causes: nil,
+                      RetryAfterSeconds: 0,
+                  },
+                  Code: 404,
+              },
+          },
+      }
+  occurred[0m
+  [38;5;9mIn [1m[It][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:334[0m [38;5;243m@ 08/11/25 03:18:23.934[0m
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [0.000 seconds][0m
+[0mRedisSentinel Controller [38;5;243mWhen handling configuration changes [38;5;9m[1m[It] should handle quorum changes[0m
+[38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:402[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m Initial reconciliation [38;5;243m@ 08/11/25 03:18:23.934[0m
+  2025-08-11T03:18:23+08:00	INFO	Initializing RedisSentinel	{"name": "test-sentinel-config"}
+  2025-08-11T03:18:23+08:00	INFO	Creating Redis Headless Service	{"name": "test-sentinel-config-redis-headless"}
+  2025-08-11T03:18:23+08:00	INFO	Creating Redis StatefulSet	{"name": "test-sentinel-config-redis"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel ConfigMap	{"name": "test-sentinel-config-sentinel-config"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel StatefulSet with dynamic config	{"name": "test-sentinel-config-sentinel"}
+  2025-08-11T03:18:23+08:00	INFO	Creating sentinel Service	{"name": "test-sentinel-config-sentinel-service"}
+  2025-08-11T03:18:23+08:00	ERROR	Failed to update RedisSentinel status	{"error": "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-config\" not found"}
+  github.com/ybooks240/redis-operator/internal/controller.(*RedisSentinelReconciler).Reconcile
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller.go:111
+  github.com/ybooks240/redis-operator/internal/controller.init.func1.4.3
+  	/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:404
+  github.com/onsi/ginkgo/v2/internal.extractBodyFunction.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/node.go:475
+  github.com/onsi/ginkgo/v2/internal.(*Suite).runNode.func3
+  	/Users/james.liu/go/pkg/mod/github.com/onsi/ginkgo/v2@v2.22.0/internal/suite.go:894
+  [38;5;9m[FAILED][0m in [It] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:407 [38;5;243m@ 08/11/25 03:18:23.934[0m
+  [1mSTEP:[0m Cleanup the RedisSentinel resource [38;5;243m@ 08/11/25 03:18:23.934[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Unexpected error:
+      <*fmt.wrapError | 0x14000494480>: 
+      failed to update RedisSentinel status: redissentinels.redis.github.com "test-sentinel-config" not found
+      {
+          msg: "failed to update RedisSentinel status: redissentinels.redis.github.com \"test-sentinel-config\" not found",
+          err: <*errors.StatusError | 0x14000554fa0>{
+              ErrStatus: {
+                  TypeMeta: {Kind: "", APIVersion: ""},
+                  ListMeta: {
+                      SelfLink: "",
+                      ResourceVersion: "",
+                      Continue: "",
+                      RemainingItemCount: nil,
+                  },
+                  Status: "Failure",
+                  Message: "redissentinels.redis.github.com \"test-sentinel-config\" not found",
+                  Reason: "NotFound",
+                  Details: {
+                      Name: "test-sentinel-config",
+                      Group: "redis.github.com",
+                      Kind: "redissentinels",
+                      UID: "",
+                      Causes: nil,
+                      RetryAfterSeconds: 0,
+                  },
+                  Code: 404,
+              },
+          },
+      }
+  occurred[0m
+  [38;5;9mIn [1m[It][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:407[0m [38;5;243m@ 08/11/25 03:18:23.934[0m
+[38;5;243m------------------------------[0m
+[38;5;10m•[0m
+[38;5;243m------------------------------[0m
+[38;5;9m• [FAILED] [0.006 seconds][0m
+[0mRedisCluster Controller [38;5;9m[1mWhen reconciling a resource [BeforeEach] [0mshould successfully reconcile the resource[0m
+  [38;5;9m[BeforeEach][0m [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/rediscluster_controller_test.go:45[0m
+  [38;5;243m[It] /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/rediscluster_controller_test.go:69[0m
+
+  [38;5;243mTimeline >>[0m
+  [1mSTEP:[0m creating the custom resource for the Kind RedisCluster [38;5;243m@ 08/11/25 03:18:23.942[0m
+  [38;5;9m[FAILED][0m in [BeforeEach] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/rediscluster_controller_test.go:56 [38;5;243m@ 08/11/25 03:18:23.947[0m
+  [38;5;9m[FAILED][0m in [AfterEach] - /Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/rediscluster_controller_test.go:64 [38;5;243m@ 08/11/25 03:18:23.948[0m
+  [38;5;243m<< Timeline[0m
+
+  [38;5;9m[FAILED] Expected success, but got an error:
+      <*errors.StatusError | 0x14000a16be0>: 
+      RedisCluster.redis.github.com "test-resource" is invalid: spec.storage.size: Required value
+      {
+          ErrStatus: {
+              TypeMeta: {Kind: "", APIVersion: ""},
+              ListMeta: {
+                  SelfLink: "",
+                  ResourceVersion: "",
+                  Continue: "",
+                  RemainingItemCount: nil,
+              },
+              Status: "Failure",
+              Message: "RedisCluster.redis.github.com \"test-resource\" is invalid: spec.storage.size: Required value",
+              Reason: "Invalid",
+              Details: {
+                  Name: "test-resource",
+                  Group: "redis.github.com",
+                  Kind: "RedisCluster",
+                  UID: "",
+                  Causes: [
+                      {
+                          Type: "FieldValueRequired",
+                          Message: "Required value",
+                          Field: "spec.storage.size",
+                      },
+                  ],
+                  RetryAfterSeconds: 0,
+              },
+              Code: 422,
+          },
+      }[0m
+  [38;5;9mIn [1m[BeforeEach][0m[38;5;9m at: [1m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/rediscluster_controller_test.go:56[0m [38;5;243m@ 08/11/25 03:18:23.947[0m
+
+  There were [1m[38;5;9madditional failures[0m detected.  To view them in detail run [1mginkgo -vv[0m
+[38;5;243m------------------------------[0m
+
+[38;5;9m[1mSummarizing 7 Failures:[0m
+  [38;5;9m[FAIL][0m [0mRedisMasterReplica Controller [38;5;9m[1mWhen reconciling a resource [BeforeEach] [0mshould successfully reconcile the resource[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redismasterreplica_controller_test.go:56[0m
+  [38;5;9m[FAIL][0m [0mRedisInstance Controller [38;5;9m[1mWhen reconciling a resource [BeforeEach] [0mshould successfully reconcile the resource[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redisinstance_controller_test.go:56[0m
+  [38;5;9m[FAIL][0m [0mRedisSentinel Controller [38;5;243mWhen reconciling a RedisSentinel with embedded Redis [38;5;9m[1m[It] should successfully reconcile and create all required resources[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:153[0m
+  [38;5;9m[FAIL][0m [0mRedisSentinel Controller [38;5;243mWhen reconciling a RedisSentinel with embedded Redis [38;5;9m[1m[It] should update status correctly[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:220[0m
+  [38;5;9m[FAIL][0m [0mRedisSentinel Controller [38;5;243mWhen reconciling a RedisSentinel with external MasterReplica reference [38;5;9m[1m[It] should successfully reconcile with external reference[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:334[0m
+  [38;5;9m[FAIL][0m [0mRedisSentinel Controller [38;5;243mWhen handling configuration changes [38;5;9m[1m[It] should handle quorum changes[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/redissentinel_controller_test.go:407[0m
+  [38;5;9m[FAIL][0m [0mRedisCluster Controller [38;5;9m[1mWhen reconciling a resource [BeforeEach] [0mshould successfully reconcile the resource[0m
+  [38;5;243m/Users/james.liu/Code/技能提升实验环境/operator/redis-operator/internal/controller/rediscluster_controller_test.go:56[0m
+
+[38;5;9m[1mRan 9 of 9 Specs in 6.264 seconds[0m
+[38;5;9m[1mFAIL![0m -- [38;5;10m[1m2 Passed[0m | [38;5;9m[1m7 Failed[0m | [38;5;11m[1m0 Pending[0m | [38;5;14m[1m0 Skipped[0m
+--- FAIL: TestControllers (6.26s)
+FAIL
+coverage: 12.2% of statements
+FAIL	github.com/ybooks240/redis-operator/internal/controller	6.702s
+FAIL
